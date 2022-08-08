@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>523</width>
-    <height>378</height>
+    <height>377</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>../MiraiOfSetsuna/data/img/milfICON.PNG</normaloff>../MiraiOfSetsuna/data/img/milfICON.PNG</iconset>
+    <normaloff>milfICON.PNG</normaloff>milfICON.PNG</iconset>
   </property>
   <property name="windowOpacity">
    <double>1.000000000000000</double>
@@ -51,6 +51,12 @@
       <width>216</width>
       <height>346</height>
      </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Adobe Devanagari</family>
+      <pointsize>10</pointsize>
+     </font>
     </property>
    </widget>
    <widget class="QPushButton" name="mainBtn2">
@@ -154,7 +160,7 @@
         <string>반복횟수</string>
        </property>
       </widget>
-      <widget class="QCheckBox" name="checkBox1_2">
+      <widget class="QCheckBox" name="checkBox2">
        <property name="geometry">
         <rect>
          <x>10</x>

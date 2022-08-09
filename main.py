@@ -19,9 +19,8 @@ import asyncio
 import discord
 from discord.ui import Button, View
 from discord.ext import commands
-from discord_buttons_plugin import  *
 
-
+discord.bin
 form_class = uic.loadUiType("mainWindow.ui")[0]
 print(cv2.__file__)
 #메이플 x, y , w , h , hwnd

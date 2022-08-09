@@ -1,8 +1,9 @@
 import serial.tools.list_ports
 import threading
-import tkinter
 import serial
 import struct
+import ctypes
+import win32api
 import glob
 import time
 import sys
@@ -106,8 +107,8 @@ class Arduino(object):
         if not self.serial.isOpen():
             raise serial.SerialException('Arduino device not found.')
 
-        # used to get mouse position and screen dimensions
-        self.__tk = tkinter.Tk()
+        # # used to get mouse position and screen dimensions
+        # self.__tk = tkinter.Tk()
 
         # this flag denoting whether a command is has been completed
         # all module calls are blocking until the Arduino command is complete
@@ -294,14 +295,18 @@ class Arduino(object):
                 self.__command_complete.clear()
 
     def __calibrate_screen(self):
-        width = self.__tk.winfo_screenwidth()
-        height = self.__tk.winfo_screenheight()
-
+        user32 = ctypes.windll.user32
+        width = user32.GetSystemMetrics(0)
+        # print(width)
+        height = user32.GetSystemMetrics(1)
+        # print(height)
         self.__write_short(width)
         self.__write_short(height)
 
     def __calibrate_mouse(self):
-        x, y = self.__tk.winfo_pointerxy()
+        x, y = win32api.GetCursorPos()
+        # XY 현위치
+        # print(x , y)
 
         self.__write_short(x)
         self.__write_short(y)

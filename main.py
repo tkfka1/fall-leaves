@@ -1,9 +1,11 @@
+from lib2to3.pgen2 import token
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 import cv2
 import numpy as np
 import win32gui
+import win32api
 from PIL import ImageGrab , Image
 import serial.tools.list_ports
 import serial.tools.list_ports
@@ -11,8 +13,14 @@ import threading
 import serial
 import struct
 import ctypes
-import win32api
 import sys
+import discord
+import asyncio
+import discord
+from discord.ui import Button, View
+from discord.ext import commands
+from discord_buttons_plugin import  *
+
 
 form_class = uic.loadUiType("mainWindow.ui")[0]
 print(cv2.__file__)
@@ -34,10 +42,41 @@ rune = 0, 0, 0, 0
 global inficheck
 inficheck = 0
 
+global distoken
+distoken = 'MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0'
+
+class Discordbot(discord.Client):
+    # APPLICATION ID
+    # 1006497506978447390
+    # PUBLIC KEY
+    # 2ad8a8019dc74bdab341b141b4e31bf60e45bf33326800c31c6a50a1eb6eda1c
+    # miari-1
+    # MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0
+    # link
+    # https://discord.com/oauth2/authorize?client_id=1006497506978447390&permissions=8&scope=bot
+    
+    bot = commands.Bot(command_prefix='=')
+    
+    async def on_ready(self):
+        print(f'Logged on as {self.user}!')
+
+    async def on_message(self, message):
+        print(f'Message from {message.author}: {message.content}')
+
+    
+    @bot.command()
+    async def hello(ctx):
+        button = Button(label="Hello", style=discord.ButtonStyle.green, emoji=discord.Emoji(id="847876880257908757", name="python"))
+        view = View()
+        view.add_item(button)
+        await ctx.send("hi" , view=view)
+
+
+global client
+client = Discordbot()
 
 # 키마 세팅 클래스
-class keymouse():
-
+class Keymouse():
     # Mouse basic commands and arguments
     MOUSE_CMD            = 0xE0
     MOUSE_CALIBRATE      = 0xE1
@@ -110,36 +149,36 @@ class keymouse():
     COMMAND_COMPLETE     = 0xFE
 
 
-# 아두이노 제어 클래스
-class Arduino(object):
 
+# 아두이노 제어 클래스
+
+class Arduino(object):
     def __init__(self, port=None, baudrate=115200):
         """
-        Args:
-          port (str, optional): Device name or port number number or None.
-          baudrate (str, optional): Baud rate such as 9600 or 115200 etc.
-        Raises:
-          SerialException: In the case the device cannot be found.
-        Note:
-          You should not have to specify any arguments when instantiating
-          this class. The default parameters should work out of the box.
+		Args:
+		  port (str, optional): Device name or port number number or None.
+		  baudrate (str, optional): Baud rate such as 9600 or 115200 etc.
 
-          However, if the constructor is unable to automatically identify
-          the Arduino device, a port name should be explicitly specified.
+		Raises:
+		  SerialException: In the case the device cannot be found.
 
-          If you specify a baud rate other than the default 115200 baud, you
-          must modify the arduino sketch to match the specified baud rate.
-        """
+		Note:
+		  You should not have to specify any arguments when instantiating
+		  this class. The default parameters should work out of the box.
+		
+		  However, if the constructor is unable to automatically identify
+		  the Arduino device, a port name should be explicitly specified.
+		
+		  If you specify a baud rate other than the default 115200 baud, you 
+		  must modify the arduino sketch to match the specified baud rate.
+		"""
 
         if port is None:
             port = self.__detect_port()
 
         self.serial = serial.Serial(port, baudrate)
         if not self.serial.isOpen():
-            raise serial.SerialException('Arduino device not found.')
-
-        # # used to get mouse position and screen dimensions
-        # self.__tk = tkinter.Tk()
+            raise serial.SerialException("Arduino device not found.")
 
         # this flag denoting whether a command is has been completed
         # all module calls are blocking until the Arduino command is complete
@@ -150,137 +189,103 @@ class Arduino(object):
         serial_reader.daemon = True
         serial_reader.start()
 
-    def open(self, port=None, baudrate=115200):
-        """
-        Args:
-          port (str, optional): Device name or port number number or None.
-          baudrate (str, optional): Baud rate such as 9600 or 115200 etc.
-        Raises:
-          SerialException: In the case the device cannot be found.
-        Note:
-          You should not have to specify any arguments when instantiating
-          this class. The default parameters should work out of the box.
-
-          However, if the constructor is unable to automatically identify
-          the Arduino device, a port name should be explicitly specified.
-
-          If you specify a baud rate other than the default 115200 baud, you
-          must modify the arduino sketch to match the specified baud rate.
-        """
-
-        if port is None:
-            port = self.__detect_port()
-
-        self.serial = serial.Serial(port, baudrate)
-        if not self.serial.isOpen():
-            raise serial.SerialException('Arduino device not found.')
-
-        # # used to get mouse position and screen dimensions
-        # self.__tk = tkinter.Tk()
-
-        # this flag denoting whether a command is has been completed
-        # all module calls are blocking until the Arduino command is complete
-        self.__command_complete = threading.Event()
-
-        # read and parse bytes from the serial buffer
-        serial_reader = threading.Thread(target=self.__read_buffer)
-        serial_reader.daemon = True
-        serial_reader.start()
-
-    def press(self, button=keymouse.MOUSE_LEFT):
-        if button in keymouse.MOUSE_BUTTONS:
-            self.__write_byte(keymouse.MOUSE_CMD)
-            self.__write_byte(keymouse.MOUSE_PRESS)
+    def press(self, button=Keymouse.MOUSE_LEFT):
+        if button in Keymouse.MOUSE_BUTTONS:
+            self.__write_byte(Keymouse.MOUSE_CMD)
+            self.__write_byte(Keymouse.MOUSE_PRESS)
             self.__write_byte(button)
 
         elif isinstance(button, int):
-            self.__write_byte(keymouse.KEYBOARD_CMD)
-            self.__write_byte(keymouse.KEYBOARD_PRESS)
+            self.__write_byte(Keymouse.KEYBOARD_CMD)
+            self.__write_byte(Keymouse.KEYBOARD_PRESS)
             self.__write_byte(button)
 
         elif isinstance(button, str) and len(button) == 1:
-            self.__write_byte(keymouse.KEYBOARD_CMD)
-            self.__write_byte(keymouse.KEYBOARD_PRESS)
+            self.__write_byte(Keymouse.KEYBOARD_CMD)
+            self.__write_byte(Keymouse.KEYBOARD_PRESS)
             self.__write_byte(ord(button))
 
         else:
-            raise ValueError('Not a valid mouse or keyboard button.')
+            raise ValueError("Not a valid mouse or keyboard button.")
 
         self.__command_complete.wait()
 
-    def release(self, button=keymouse.MOUSE_LEFT):
-        if button in keymouse.MOUSE_BUTTONS:
-            self.__write_byte(keymouse.MOUSE_CMD)
-            self.__write_byte(keymouse.MOUSE_RELEASE)
+    def release(self, button=Keymouse.MOUSE_LEFT):
+        if button in Keymouse.MOUSE_BUTTONS:
+            self.__write_byte(Keymouse.MOUSE_CMD)
+            self.__write_byte(Keymouse.MOUSE_RELEASE)
             self.__write_byte(button)
 
         elif isinstance(button, int):
-            self.__write_byte(keymouse.KEYBOARD_CMD)
-            self.__write_byte(keymouse.KEYBOARD_RELEASE)
+            self.__write_byte(Keymouse.KEYBOARD_CMD)
+            self.__write_byte(Keymouse.KEYBOARD_RELEASE)
             self.__write_byte(button)
 
         elif isinstance(button, str) and len(button) == 1:
-            self.__write_byte(keymouse.KEYBOARD_CMD)
-            self.__write_byte(keymouse.KEYBOARD_RELEASE)
+            self.__write_byte(Keymouse.KEYBOARD_CMD)
+            self.__write_byte(Keymouse.KEYBOARD_RELEASE)
             self.__write_byte(ord(button))
 
         else:
-            raise ValueError('Not a valid mouse or keyboard button.')
+            raise ValueError("Not a valid mouse or keyboard button.")
 
         self.__command_complete.wait()
 
     def release_all(self):
-        self.__write_byte(keymouse.KEYBOARD_CMD)
-        self.__write_byte(keymouse.KEYBOARD_RELEASE_ALL)
+        self.__write_byte(Keymouse.KEYBOARD_CMD)
+        self.__write_byte(Keymouse.KEYBOARD_RELEASE_ALL)
 
         self.__command_complete.wait()
 
     def write(self, keys, endl=False):
         if isinstance(keys, int):
-            self.__write_byte(keymouse.KEYBOARD_CMD)
-            self.__write_byte(keymouse.KEYBOARD_WRITE)
+            self.__write_byte(Keymouse.KEYBOARD_CMD)
+            self.__write_byte(Keymouse.KEYBOARD_WRITE)
             self.__write_byte(keys)
 
         elif isinstance(keys, str) and len(keys) == 1:
-            self.__write_byte(keymouse.KEYBOARD_CMD)
-            self.__write_byte(keymouse.KEYBOARD_WRITE)
+            self.__write_byte(Keymouse.KEYBOARD_CMD)
+            self.__write_byte(Keymouse.KEYBOARD_WRITE)
             self.__write_byte(ord(keys))
 
         elif isinstance(keys, str):
             if not endl:
-                self.__write_byte(keymouse.KEYBOARD_CMD)
-                self.__write_byte(keymouse.KEYBOARD_PRINT)
+                self.__write_byte(Keymouse.KEYBOARD_CMD)
+                self.__write_byte(Keymouse.KEYBOARD_PRINT)
                 self.__write_str(keys)
             else:
-                self.__write_byte(keymouse.KEYBOARD_CMD)
-                self.__write_byte(keymouse.KEYBOARD_PRINTLN)
+                self.__write_byte(Keymouse.KEYBOARD_CMD)
+                self.__write_byte(Keymouse.KEYBOARD_PRINTLN)
                 self.__write_str(keys)
 
         else:
-            raise ValueError('Not a valid keyboard keystroke. ' +
-                             'Must be type `int` or `char` or `str`.')
+            raise ValueError(
+                "Not a valid keyboard keystroke. "
+                + "Must be type `int` or `char` or `str`."
+            )
 
         self.__command_complete.wait()
 
     def type(self, message, wpm=80, mistakes=True, accuracy=96):
         if not isinstance(message, str):
-            raise ValueError('Invalid keyboard message. ' +
-                             'Must be type `str`.')
+            raise ValueError("Invalid keyboard message. " + "Must be type `str`.")
 
         if not isinstance(wpm, int) and wpm < 1 or wpm > 255:
-            raise ValueError('Invalid value for `WPM`. ' +
-                             'Must be type `int`: 1 <= WPM <= 255.')
+            raise ValueError(
+                "Invalid value for `WPM`. " + "Must be type `int`: 1 <= WPM <= 255."
+            )
 
         if not isinstance(mistakes, bool):
-            raise ValueError('Invalid value for `mistakes`. ' +
-                             'Must be type `bool`.')
+            raise ValueError("Invalid value for `mistakes`. " + "Must be type `bool`.")
 
         if not isinstance(accuracy, int) and accuracy < 1 or accuracy > 100:
-            raise ValueError('Invalid value for `accuracy`. ' +
-                             'Must be type `int`: 1 <= accuracy <= 100.')
+            raise ValueError(
+                "Invalid value for `accuracy`. "
+                + "Must be type `int`: 1 <= accuracy <= 100."
+            )
 
-        self.__write_byte(keymouse.KEYBOARD_CMD)
-        self.__write_byte(keymouse.KEYBOARD_TYPE)
+        self.__write_byte(Keymouse.KEYBOARD_CMD)
+        self.__write_byte(Keymouse.KEYBOARD_TYPE)
         self.__write_str(message)
         self.__write_byte(wpm)
         self.__write_byte(mistakes)
@@ -288,47 +293,51 @@ class Arduino(object):
 
         self.__command_complete.wait()
 
-    def click(self, button=keymouse.MOUSE_LEFT):
-        if button not in keymouse.MOUSE_BUTTONS:
-            raise ValueError('Not a valid mouse button.')
+    def click(self, button=Keymouse.MOUSE_LEFT):
+        if button not in Keymouse.MOUSE_BUTTONS:
+            raise ValueError("Not a valid mouse button.")
 
-        self.__write_byte(keymouse.MOUSE_CMD)
-        self.__write_byte(keymouse.MOUSE_CLICK)
+        self.__write_byte(Keymouse.MOUSE_CMD)
+        self.__write_byte(Keymouse.MOUSE_CLICK)
         self.__write_byte(button)
 
         self.__command_complete.wait()
 
     def fast_click(self, button):
-        if button not in keymouse.MOUSE_BUTTONS:
-            raise ValueError('Not a valid mouse button.')
+        if button not in Keymouse.MOUSE_BUTTONS:
+            raise ValueError("Not a valid mouse button.")
 
-        self.__write_byte(keymouse.MOUSE_CMD)
-        self.__write_byte(keymouse.MOUSE_FAST_CLICK)
+        self.__write_byte(Keymouse.MOUSE_CMD)
+        self.__write_byte(Keymouse.MOUSE_FAST_CLICK)
         self.__write_byte(button)
 
         self.__command_complete.wait()
 
     def move(self, dest_x, dest_y):
-        if not isinstance(dest_x, (int, float)) and \
-                not isinstance(dest_y, (int, float)):
-            raise ValueError('Invalid mouse coordinates. ' +
-                             'Must be type `int` or `float`.')
+        if not isinstance(dest_x, (int, float)) and not isinstance(
+            dest_y, (int, float)
+        ):
+            raise ValueError(
+                "Invalid mouse coordinates. " + "Must be type `int` or `float`."
+            )
 
-        self.__write_byte(keymouse.MOUSE_CMD)
-        self.__write_byte(keymouse.MOUSE_MOVE)
+        self.__write_byte(Keymouse.MOUSE_CMD)
+        self.__write_byte(Keymouse.MOUSE_MOVE)
         self.__write_short(dest_x)
         self.__write_short(dest_y)
 
         self.__command_complete.wait()
 
     def bezier_move(self, dest_x, dest_y):
-        if not isinstance(dest_x, (int, float)) and \
-                not isinstance(dest_y, (int, float)):
-            raise ValueError('Invalid mouse coordinates. ' +
-                             'Must be `int` or `float`.')
+        if not isinstance(dest_x, (int, float)) and not isinstance(
+            dest_y, (int, float)
+        ):
+            raise ValueError(
+                "Invalid mouse coordinates. " + "Must be `int` or `float`."
+            )
 
-        self.__write_byte(keymouse.MOUSE_CMD)
-        self.__write_byte(keymouse.MOUSE_BEZIER)
+        self.__write_byte(Keymouse.MOUSE_CMD)
+        self.__write_byte(Keymouse.MOUSE_BEZIER)
         self.__write_short(dest_x)
         self.__write_short(dest_y)
 
@@ -343,7 +352,7 @@ class Arduino(object):
         arduino_port = None
 
         for port in ports:
-            if 'Arduino' in port[1]:
+            if "Arduino" in port[1]:
                 arduino_port = port[0]
 
         return arduino_port
@@ -352,29 +361,24 @@ class Arduino(object):
         while True:
             byte = ord(self.serial.read())
 
-            if byte == keymouse.MOUSE_CALIBRATE:
+            if byte == Keymouse.MOUSE_CALIBRATE:
                 self.__calibrate_mouse()
 
-            elif byte == keymouse.SCREEN_CALIBRATE:
+            elif byte == Keymouse.SCREEN_CALIBRATE:
                 self.__calibrate_screen()
 
-            elif byte == keymouse.COMMAND_COMPLETE:
+            elif byte == Keymouse.COMMAND_COMPLETE:
                 self.__command_complete.set()
                 self.__command_complete.clear()
 
     def __calibrate_screen(self):
-        user32 = ctypes.windll.user32
-        width = user32.GetSystemMetrics(0)
-        # print(width)
-        height = user32.GetSystemMetrics(1)
-        # print(height)
+        width, height = win32api.GetSystemMetrics(0), win32api.GetSystemMetrics(1)
+
         self.__write_short(width)
         self.__write_short(height)
 
     def __calibrate_mouse(self):
         x, y = win32api.GetCursorPos()
-        # XY 현위치
-        # print(x , y)
 
         self.__write_short(x)
         self.__write_short(y)
@@ -385,15 +389,16 @@ class Arduino(object):
         self.__write_byte(0x00)
 
     def __write_byte(self, byte):
-        struct_pack = struct.pack('<B', byte)
+        struct_pack = struct.pack("<B", byte)
         self.serial.write(struct_pack)
 
     def __write_short(self, short):
-        struct_pack = struct.pack('<H', int(short))
+        struct_pack = struct.pack("<H", int(short))
         self.serial.write(struct_pack)
 
+
 # 캡쳐 이미지 클래스
-class capture():
+class Capture():
     MyPos_templ = cv2.imread('./img/My_Position.png', cv2.IMREAD_COLOR)
     MyPos_templ_mask = cv2.imread('./img/My_Position_mask.png', cv2.IMREAD_COLOR)
     Rune_templ = cv2.imread('./img/Is_Rune.png', cv2.IMREAD_COLOR)
@@ -415,11 +420,11 @@ class capture():
 
     def miniMap(self, img):
         img = img.crop((0, 0, 500, 500))
-        res_pos1 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), capture.MiniLU, cv2.TM_CCORR_NORMED)
+        res_pos1 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniLU, cv2.TM_CCORR_NORMED)
         con_pos1 = res_pos1.max()
         loc_pos1 = np.where(res_pos1 == con_pos1)
 
-        res_pos2 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), capture.MiniRD, cv2.TM_CCORR_NORMED)
+        res_pos2 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniRD, cv2.TM_CCORR_NORMED)
         con_pos2 = res_pos2.max()
         loc_pos2 = np.where(res_pos2 == con_pos2)
         # img.save("./img/tempmini.png")
@@ -431,7 +436,7 @@ class capture():
 
     def myPosition(self,img):
         try:
-            res_mypos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), capture.MyPos_templ, cv2.TM_CCORR_NORMED, mask=capture.MyPos_templ_mask)
+            res_mypos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MyPos_templ, cv2.TM_CCORR_NORMED, mask=Capture.MyPos_templ_mask)
             con_mypos = res_mypos[res_mypos <= 1].max()
             loc_mypos = np.where(res_mypos == con_mypos)
             return loc_mypos[1][0], loc_mypos[0][0]
@@ -440,7 +445,7 @@ class capture():
 
     def runePosition(self,img):
         try:
-            res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), capture.Rune_templ, cv2.TM_CCORR_NORMED, mask=capture.Rune_templ_mask)
+            res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.Rune_templ, cv2.TM_CCORR_NORMED, mask=Capture.Rune_templ_mask)
             con_runepos = res_runepos[res_runepos < 1].max()
             loc_runepos = np.where(res_runepos == con_runepos)
             return loc_runepos[1][0], loc_runepos[0][0], con_runepos
@@ -455,6 +460,7 @@ class MyWindow(QMainWindow, form_class):
         self.arduino = None
         self.scriptworker = None
         self.captureworker = None
+        self.discordworker = None
         self.miniMap = None
         self.mapleOn = None
         self.firstMacro = True
@@ -480,6 +486,10 @@ class MyWindow(QMainWindow, form_class):
             print("매크로가 실행중이지 않습니다.")
         try:
             self.scriptworker.pause()
+        except:
+            print("매크로가 실행중이지 않습니다.")
+        try:
+            self.discordworker.pause()
         except:
             print("매크로가 실행중이지 않습니다.")
             return
@@ -544,39 +554,48 @@ class MyWindow(QMainWindow, form_class):
                     self.isRun = False
                     return
 
-        print("메이플 프로세스확인")
-        mapleOn = capture.mapleOn(self)
-        if mapleOn[4] == 0:
-            print("메이플 확인 안됨")
-            print("중지합니다.")
-            self.isRun = False
-            return
-        print(mapleOn)
-        print("메이플 미니맵 확인")
-        bbox = (mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3])
-        screen = ImageGrab.grab(bbox)
-        # 시작 찰칵찰칵이
-        screen.save("./img/temp.png")
-        miniMap = capture.miniMap(self,screen)
 
-        print(miniMap)
-        if miniMap[3] == 0:
-            print("미니맵 인식안됨")
-            print("중지합니다.")
-            self.isRun = False
-            return
+
+        # print("메이플 프로세스확인")
+        # mapleOn = Capture.mapleOn(self)
+        # if mapleOn[4] == 0:
+        #     print("메이플 확인 안됨")
+        #     print("중지합니다.")
+        #     self.isRun = False
+        #     return
+        # print(mapleOn)
+        # print("메이플 미니맵 확인")
+        # bbox = (mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3])
+        # screen = ImageGrab.grab(bbox)
+        # # 시작 찰칵찰칵이
+        # screen.save("./img/temp.png")
+        # miniMap = Capture.miniMap(self,screen)
+
+        # print(miniMap)
+        # if miniMap[3] == 0:
+        #     print("미니맵 인식안됨")
+        #     print("중지합니다.")
+        #     self.isRun = False
+        #     return
+
+
 
         # print("딥러닝체크")
         print("캡쳐 쓰레드 시작")
-        self.captureworker = captureWorker()
+        self.captureworker = CaptureWorker()
         self.captureworker.start()
         self.captureworker.textInputTB1.connect(self.textInputTB1)
 
         print("스크립트 불러오기")
         print("스크립트 쓰레드 시작")
-        self.scriptworker = scriptWorker()
+        self.scriptworker = ScriptWorker()
         self.scriptworker.start()
         self.scriptworker.textInputTB1.connect(self.textInputTB1)
+        
+        self.discordworker = DiscordWorker()
+        self.discordworker.start()
+        #self.discordworker.textInputTB1.connect(self.textInputTB1)
+        
 
 
         # 매크로상태1 = True
@@ -614,7 +633,7 @@ class MyWindow(QMainWindow, form_class):
 
 
 # 캡쳐쓰레드
-class captureWorker(QThread):
+class CaptureWorker(QThread):
     textInputTB1 = pyqtSignal(str)
 
     def __init__(self):
@@ -633,8 +652,8 @@ class captureWorker(QThread):
             screen = ImageGrab.grab(bbox)
             # 내위치 찾기
             crop_img = screen.crop(bboxMini)
-            stat = capture.myPosition(self,crop_img)
-            self.textInputTB1.emit("내위치 " + str(stat[0]) + str(stat[1]))
+            stat = Capture.myPosition(self,crop_img)
+            # self.textInputTB1.emit("내위치 " + str(stat[0]) + str(stat[1]))
             self.sleep(1)
 
     def resume(self):
@@ -646,7 +665,7 @@ class captureWorker(QThread):
 
 
 # 스크립트 쓰레드
-class scriptWorker(QThread):
+class ScriptWorker(QThread):
     textInputTB1 = pyqtSignal(str)
     global stat
 
@@ -656,8 +675,8 @@ class scriptWorker(QThread):
 
     def run(self):
         while self.running:
-            print("스크립트쓰레드")
-            self.textInputTB1.emit("스크립트쓰레드 시작")
+            # print("스크립트쓰레드")
+            # self.textInputTB1.emit("스크립트쓰레드 시작")
             self.sleep(1)
 
     def resume(self):
@@ -666,6 +685,28 @@ class scriptWorker(QThread):
     def pause(self):
         self.running = False
         print("스크립트 쓰레드 중지")
+
+# 디스코드 쓰레드
+class DiscordWorker(QThread):
+    global distoken
+    global client
+    
+    def __init__(self):
+        super().__init__()
+        self.running = True
+        
+    def run(self):
+        client.run(distoken)
+        
+    def resume(self):
+        self.running = True
+
+    def pause(self):
+        self.running = False
+        print("디스코드 쓰레드 중지")
+
+
+
 
 
 if __name__ == "__main__":

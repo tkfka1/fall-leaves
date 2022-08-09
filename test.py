@@ -1,49 +1,79 @@
-import tkinter
-import ctypes
-import time
-import win32api
-from multiprocessing import Process, Queue
+import discord
+from discord.http import Route
 
+bot = discord.Client()
+http = bot.http
 
-start = time.time()  # 시작 시간 저장
-# width = tkinter.Tk().winfo_screenwidth()
-# height = tkinter.Tk().winfo_screenheight()
-# x, y = tkinter.Tk().winfo_pointerxy()
-# print(x, y)
-# print(width , height)
-# user32 = ctypes.windll.user32
-# screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
-#
-# x, y = win32api.GetCursorPos()
-# print(user32.GetSystemMetrics(0))
-# print(x , y)
-# print("sdfsdaf")
+default_components = [
+    {
+        "type": 1,
+        "components": [
+            {
+                "type": 2,
+                "label": "Python",
+                "style": 2,
+                "custom_id": "python",
+                "emoji": {
+                    "id": "847876880257908757",
+                    "name": "python"
+                }
+            }, {
+                "type": 2,
+                "label": "Kotlin",
+                "style": 2,
+                "custom_id": "kotlin",
+                "emoji": {
+                    "id": "847876848662216714",
+                    "name": "kotlin"
+                }
+            }, {
+                "type": 2,
+                "label": "C언어",
+                "style": 2,
+                "custom_id": "c"
+            }, {
+                "type": 2,
+                "label": "C++",
+                "style": 2,
+                "custom_id": "cpp",
+                "emoji": {
+                    "id": "847876987778629722",
+                    "name": "cpp"
+                }
+            }, {
+                "type": 2,
+                "label": "Java",
+                "style": 2,
+                "custom_id": "java",
+                "emoji": {
+                    "id": "847876915619954708",
+                    "name": "java"
+                }
+            }
+        ]
 
-#
-# queue = Queue()
-# queue = [4, 5, 6]
-# print(queue)
-#
+    }
+]
 
-class aa():
-    def asas():
-        print("asasa")
-        Arduino()
-
-
-
-class Arduino(object):
-
-    def __init__(self):
-        print("asd")
-
-
-
-aa.asas()
-
-print("time :", time.time() - start)  # 현재시각 - 시작시간 = 실행 시간
-
-
-# print(screensize)
-#
-#
+@bot.event
+async def on_message(msg: discord.Message):
+	if msg.content == "!프로그래밍":
+		embed = discord.Embed(
+			title="최고의 프로그래밍 언어",
+			description="""<:python:847876880257908757> Python: 0표
+				<:kotlin:847876848662216714> Kotlin: 0표
+				C언어: 0표
+				<:cpp:847876987778629722> C++: 0표
+				<:java:847876915619954708> Java: 0표""",
+			colour=0x0080ff
+		)
+        
+		r = Route('POST', '/channels/{channel_id}/messages', channel_id=msg.channel.id)
+		payload = {
+			"embed": embed.to_dict() ,
+			"components": default_components
+		}
+		http.request(r, json=payload)
+		return
+       
+bot.run("MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0")

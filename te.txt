@@ -1,1 +1,14 @@
 pip install opencv-contrib-python
+pip install pyqt5
+
+pip install opencv-python
+pip install pypiwin32
+pip install pillow
+pip install pyserial
+pip install discord
+pip install py-cord
+pip install discord.py discord_buttons_plugin
+
+https://www.arduino.cc/en/software
+
+https://docs.pycord.dev/en/master/#getting-started

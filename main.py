@@ -1,4 +1,5 @@
 from lib2to3.pgen2 import token
+import random
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
@@ -14,13 +15,11 @@ import serial
 import struct
 import ctypes
 import sys
-import discord
 import asyncio
 import discord
 from discord.ui import Button, View
 from discord.ext import commands
 
-discord.bin
 form_class = uic.loadUiType("mainWindow.ui")[0]
 print(cv2.__file__)
 #메이플 x, y , w , h , hwnd
@@ -43,36 +42,133 @@ inficheck = 0
 
 global distoken
 distoken = 'MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0'
+# guild_id = 1006538980956831764
+# # guild_id = 864052543369379870
+# guild_ids=[guild_id]
 
-class Discordbot(discord.Client):
-    # APPLICATION ID
-    # 1006497506978447390
-    # PUBLIC KEY
-    # 2ad8a8019dc74bdab341b141b4e31bf60e45bf33326800c31c6a50a1eb6eda1c
-    # miari-1
-    # MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0
-    # link
-    # https://discord.com/oauth2/authorize?client_id=1006497506978447390&permissions=8&scope=bot
+
+# APPLICATION ID
+# 1006497506978447390
+# PUBLIC KEY
+# 2ad8a8019dc74bdab341b141b4e31bf60e45bf33326800c31c6a50a1eb6eda1c
+# miari-1
+# MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0
+# link
+# https://discord.com/oauth2/authorize?client_id=1006497506978447390&permissions=8&scope=bot
+
+
+
+#### 만들거
+## 1. 디코로 시작하기
+# 2. 디코로 중지
+# 3. 시작후 움직여서 사냥터 가기
+# 4. 
+
+global bot
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix=commands.when_mentioned_or("!"), debug_guilds=[...], intents=intents)
+
+
+class MyModal(discord.ui.Modal):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(
+            discord.ui.InputText(
+                label="Short Input",
+                placeholder="Placeholder Test",
+            ),
+            discord.ui.InputText(
+                label="Longer Input",
+                value="Longer Value\nSuper Long Value",
+                style=discord.InputTextStyle.long,
+            ),
+            *args,
+            **kwargs,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="Your Modal Results",
+            fields=[
+                discord.EmbedField(name="First Input", value=self.children[0].value, inline=False),
+                discord.EmbedField(name="Second Input", value=self.children[1].value, inline=False),
+            ],
+            color=discord.Color.random(),
+        )
+        await interaction.response.send_message(embeds=[embed])
+
+
+@bot.slash_command(name="modaltest")
+async def modal_slash(ctx: discord.ApplicationContext):
+    """Shows an example of a modal dialog being invoked from a slash command."""
+    modal = MyModal(title="Slash Command Modal")
+    await ctx.send_modal(modal)
+
+
+@bot.message_command(name="messagemodal")
+async def modal_message(ctx: discord.ApplicationContext, message: discord.Message):
+    """Shows an example of a modal dialog being invoked from a message command."""
+    modal = MyModal(title="Message Command Modal")
+    modal.title = f"Modal for Message ID: {message.id}"
+    await ctx.send_modal(modal)
+
+
+@bot.user_command(name="usermodal")
+async def modal_user(ctx: discord.ApplicationContext, member: discord.Message):
+    """Shows an example of a modal dialog being invoked from a user command."""
+    modal = MyModal(title="User Command Modal")
+    modal.title = f"Modal for User: {member.display_name}"
+    await ctx.send_modal(modal)
+
+
+@bot.command()
+async def modaltest(ctx: commands.Context):
+    """Shows an example of modals being invoked from an interaction component (e.g. a button or select menu)"""
+
+    class MyView(discord.ui.View):
+        @discord.ui.button(label="Modal Test", style=discord.ButtonStyle.primary)
+        async def button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
+            modal = MyModal(title="Modal Triggered from Button")
+            await interaction.response.send_modal(modal)
+
+        @discord.ui.select(
+            placeholder="Pick Your Modal",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(label="First Modal", description="Shows the first modal"),
+                discord.SelectOption(label="Second Modal", description="Shows the second modal"),
+            ],
+        )
+        async def select_callback(self, select: discord.ui.Select, interaction: discord.Interaction):
+            modal = MyModal(title="Temporary Title")
+            modal.title = select.values[0]
+            await interaction.response.send_modal(modal)
+
+    view = MyView()
+    await ctx.send("Click Button, Receive Modal", view=view)
+
+
+
+
+# @bot.command()
+# async def hello(ctx):
+#     button = Button(label="Hello", style=discord.ButtonStyle.green, emoji=discord.Emoji(id="847876880257908757", name="python"))
     
-    bot = commands.Bot(command_prefix='=')
-    
-    async def on_ready(self):
-        print(f'Logged on as {self.user}!')
-
-    async def on_message(self, message):
-        print(f'Message from {message.author}: {message.content}')
-
-    
-    @bot.command()
-    async def hello(ctx):
-        button = Button(label="Hello", style=discord.ButtonStyle.green, emoji=discord.Emoji(id="847876880257908757", name="python"))
-        view = View()
-        view.add_item(button)
-        await ctx.send("hi" , view=view)
+#     async def button_callback(interaction):
+#         await interaction.response.send_message("Hello World")
+        
+#     button.callback = button_callback
+        
+#     view = View()
+#     view.add_item(button)
+#     await ctx.send("hi" , view=view)
 
 
-global client
-client = Discordbot()
+
+
 
 # 키마 세팅 클래스
 class Keymouse():
@@ -688,14 +784,14 @@ class ScriptWorker(QThread):
 # 디스코드 쓰레드
 class DiscordWorker(QThread):
     global distoken
-    global client
+    global bot
     
     def __init__(self):
         super().__init__()
         self.running = True
         
     def run(self):
-        client.run(distoken)
+        bot.run(distoken)
         
     def resume(self):
         self.running = True

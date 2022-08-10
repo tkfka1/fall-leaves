@@ -38,6 +38,8 @@ stat = 0, 0
 # 룬 [0,1] 위치 xy [2] 룬 여부 [3] 룬체크 0은 체크함 1은 체크안함
 global rune
 rune = 0, 0
+global runetime
+runetime = 0
 # 무한반복 0 은 반복함 1은 반복안함
 global runecheck
 runecheck = 0
@@ -110,7 +112,7 @@ async def ping(ctx):
 
 
 
-#disstat = 0  실행중 1 정상동작중 2 룬찾기 3 알람 4 거탐 5 비올레타
+#disstat = 0  중지 1 정상동작중 2 룬찾기 3 알람 4 거탐 5 비올레타
 # 디스코드 모니터 쓰레드
 async def bt():
     global channel
@@ -125,23 +127,23 @@ async def bt():
         # await user.send('우누누우')
         # print("웃우")
         if disstat == 0:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("실행중"))
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("중지"))
         elif disstat == 1:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("정상동작중"))
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("정상동작"))
             if i == 600:
                 i = 0
                 await channel.send("정상동작중입니다.")
             i = i+1
         elif disstat == 2:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("룬찾기"))
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("일시정지"))
         elif disstat == 3:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("알람"))
-            await user.send('(」・ω・)」우―！(／・ω・)／냐―！')
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("룬찾기"))
         elif disstat == 4:
             await bot.change_presence(status = discord.Status.online, activity = discord.Game("거탐"))
             await user.send('(＼(・ω ・＼)SAN치！(／・ω・)／FIN치！')
         elif disstat == 5:
             await bot.change_presence(status = discord.Status.online, activity = discord.Game("비올레타"))
+            await user.send('(」・ω・)」우―！(／・ω・)／냐―！')
         await asyncio.sleep(1)
 
 
@@ -501,7 +503,7 @@ class Capture:
         con_pos2 = res_pos2.max()
         loc_pos2 = np.where(res_pos2 == con_pos2)
         # img.save("./img/tempmini.png")
-        if con_pos1 > 0.98 and con_pos2 > 0.98:
+        if con_pos1 > 0.99 and con_pos2 > 0.99:
             return loc_pos1[1][0] + 1, loc_pos1[0][0] + 1, loc_pos2[1][0] + 12, loc_pos2[0][0] + 11, con_pos1, con_pos2
         else:
             return 0, 0, 0, 0, con_pos1, con_pos2
@@ -509,11 +511,12 @@ class Capture:
 
     def myPosition(self, img):
         try:
-            res_mypos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MyPos_templ, cv2.TM_CCORR_NORMED, mask=Capture.MyPos_templ_mask)
-            con_mypos = res_mypos[res_mypos <= 1].max()
-            loc_mypos = np.where(res_mypos == con_mypos)
-            if con_mypos > 0.98:
-                return loc_mypos[1][0], loc_mypos[0][0]
+            res_mypos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MyPos_templ, cv2.TM_SQDIFF_NORMED, mask=Capture.MyPos_templ_mask)
+            minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(res_mypos)
+            con_runepos = minVal
+            loc_runepos = minLoc
+            if con_runepos < 0.01:
+                return loc_runepos[0], loc_runepos[1]
             else:
                 return 0, 0
         except:
@@ -521,13 +524,14 @@ class Capture:
 
     def runePosition(self, img):
         try:
-            res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.Rune_templ, cv2.TM_CCORR_NORMED, mask=Capture.Rune_templ_mask)
-            con_runepos = res_runepos[res_runepos < 1].max()
-            loc_runepos = np.where(res_runepos == con_runepos)
+            res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.Rune_templ, cv2.TM_SQDIFF_NORMED, mask=Capture.Rune_templ_mask)
+            minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(res_runepos)
+            con_runepos = minVal
+            loc_runepos = minLoc
             # img.save("./img/tempmini.png")
-            print(loc_runepos[1][0], loc_runepos[0][0], con_runepos)
-            if con_runepos > 0.83:
-                return loc_runepos[1][0], loc_runepos[0][0]
+            print(minVal, maxVal, minLoc, maxLoc)
+            if con_runepos < 0.01:
+                return loc_runepos[0], loc_runepos[1]
             else:
                 return 0, 0
         except:
@@ -560,6 +564,7 @@ class MyWindow(QMainWindow, form_class):
         self.startMacro()
 
     def onStopClicked(self):
+        global disstat
         # print("stop 버튼")
         try:
             self.captureworker.pause()
@@ -575,6 +580,7 @@ class MyWindow(QMainWindow, form_class):
             print("매크로가 실행중이지 않습니다.")
             return
         self.isRun = False
+        disstat = 2
         self.textInputTB1("중지합니다.")
 
     def onReloadClicked(self):
@@ -700,18 +706,24 @@ class CaptureWorker(QThread):
             global stat
             global rune
             global disstat
+            global runetime
             screen = ImageGrab.grab(self.bbox)
             # 내위치 찾기
             crop_img = screen.crop(self.bboxMini)
             stat = Capture.myPosition(self, crop_img)
+            #약 5초마다 반복 룬찾기 및 내위치
             if self.capturei == 30:
                 self.capturei = 0
-                self.textInputTB1.emit("내위치 " + str(stat[0]) + str(stat[1]))
+                # self.textInputTB1.emit("내위치 " + str(stat[0]) + str(stat[1]))
                 if runecheck == 0:
-                    rune = Capture.runePosition(self, crop_img)
-                    if not rune[1] == 0:
-                        disstat = 2
-                        self.textInputTB1.emit("룬위치 " + str(rune[0]) + str(rune[1]))
+                    self.runet = time.time()
+                    print(runetime)
+                    print(self.runet-runetime)
+                    if self.runet-runetime > 900:
+                        rune = Capture.runePosition(self, crop_img)
+                        if not rune[1] == 0:
+                            disstat = 3
+                            self.textInputTB1.emit("룬위치 " + str(rune[0]) + str(rune[1]))
             self.capturei += 1
         # job1 내위치 0.1초마다
         job1 = schedule.every(0.1).seconds.do(myloce)
@@ -753,10 +765,11 @@ class ScriptWorker(QThread):
         self.runestack = 0
         global disstat
         global ardu
+        global runetime
         while self.running:
             #만약 룬
             #if 룬
-            if disstat == 2:
+            if disstat == 3:
                 if self.runeloce[0] == 0:
                     if not rune[1] == 0:
                         self.starttime = time.time()
@@ -880,6 +893,7 @@ class ScriptWorker(QThread):
                     self.runestack += 1
                     time.sleep(0.1)
                     disstat = 1
+                    runetime = time.time()
                     self.runeloce = 0, 0
                     print(time.time()-self.starttime)
                     time.sleep(0.4)
@@ -905,6 +919,7 @@ class ScriptWorker(QThread):
 # 디스코드 쓰레드
 class DiscordWorker(QThread):
     global distoken
+    global disstat
     global bot
 
     def __init__(self):
@@ -912,7 +927,8 @@ class DiscordWorker(QThread):
         self.running = True
 
     def run(self):
-        bot.run(distoken)
+        if disstat == 0:
+            bot.run(distoken)
 
     def resume(self):
         self.running = True

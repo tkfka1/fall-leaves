@@ -16,3 +16,5 @@ conda install -c anaconda pywin32
 https://www.arduino.cc/en/software
 https://github.com/Pycord-Development/pycord
 https://docs.pycord.dev/en/master/#getting-started
+
+https://cog-creators.github.io/discord-embed-sandbox/

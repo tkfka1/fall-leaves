@@ -19,6 +19,8 @@ import asyncio
 import discord
 from discord.ui import Button, View
 from discord.ext import commands
+import time
+import schedule
 
 form_class = uic.loadUiType("mainWindow.ui")[0]
 print(cv2.__file__)
@@ -32,20 +34,34 @@ miniMap = 0,0,0,0,0,0
 
 # [0] 내위치 X [1] 내위치 Y
 global stat
-stat = 0 , 0
+stat = 0, 0
 # 룬 [0,1] 위치 xy [2] 룬 여부 [3] 룬체크 0은 체크함 1은 체크안함
 global rune
-rune = 0, 0, 0, 0
+rune = 0, 0
 # 무한반복 0 은 반복함 1은 반복안함
+global runecheck
+runecheck = 0
 global inficheck
 inficheck = 0
 
+global ardu
+ardu = None
+#디스코드 상태
+global disstat
+disstat = 0
+#디스코드 토큰
 global distoken
 distoken = 'MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0'
-# guild_id = 1006538980956831764
-# # guild_id = 864052543369379870
-# guild_ids=[guild_id]
 
+global bot
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix=">", intents=intents)
+
+global channel
+channel = 1006538980956831764
+global user
+user = 324926800805494784
 
 # APPLICATION ID
 # 1006497506978447390
@@ -56,25 +72,77 @@ distoken = 'MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30
 # link
 # https://discord.com/oauth2/authorize?client_id=1006497506978447390&permissions=8&scope=bot
 
-
-
 #### 만들거
 ## 1. 디코로 시작하기
 # 2. 디코로 중지
 # 3. 시작후 움직여서 사냥터 가기
-# 4. 
+# 4.
+# user = client.get_user(381870129706958858)
+# await user.send('👀')
+# channel = client.get_channel(12324234183172)
+# await channel.send('hello')
 
-global bot
 
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix=">", intents=intents)
+@bot.event
+async def on_ready():
+    print('Bot Is Ready')
+    await bot.change_presence(status=discord.Status.online, activity=discord.Game("재밌는 일"))
+    await bt()
+
+
+# 받으면 삭제하고 바꾸기
+@bot.event
+async def on_message(message):
+    message_content = message.content
+    bad = message_content.find("pong")
+    print(bad)
+    if bad >= 0:
+        await message.channel.send("읏우")
+        await message.delete()
+    await bot.process_commands(message)
 
 @bot.command()
 async def ping(ctx):
-    await ctx.send("pong")
+    file = discord.File("temp.png")
+    embed = discord.Embed(title='알림', description='거탐', color=0xFF5733)
+    embed.set_image(url="attachment://temp.png")
+    await ctx.send(embed=embed, file=file)
 
 
+
+#disstat = 0  실행중 1 정상동작중 2 룬찾기 3 알람 4 거탐 5 비올레타
+# 디스코드 모니터 쓰레드
+async def bt():
+    global channel
+    global user
+    channel = bot.get_channel(channel)
+    user = await bot.fetch_user(user)
+
+    await bot.wait_until_ready()
+    i = 0
+    while not bot.is_closed():
+        # await channel.send("읏우")
+        # await user.send('우누누우')
+        # print("웃우")
+        if disstat == 0:
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("실행중"))
+        elif disstat == 1:
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("정상동작중"))
+            if i == 600:
+                i = 0
+                await channel.send("정상동작중입니다.")
+            i = i+1
+        elif disstat == 2:
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("룬찾기"))
+        elif disstat == 3:
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("알람"))
+            await user.send('(」・ω・)」우―！(／・ω・)／냐―！')
+        elif disstat == 4:
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("거탐"))
+            await user.send('(＼(・ω ・＼)SAN치！(／・ω・)／FIN치！')
+        elif disstat == 5:
+            await bot.change_presence(status = discord.Status.online, activity = discord.Game("비올레타"))
+        await asyncio.sleep(1)
 
 
 
@@ -401,7 +469,7 @@ class Arduino(object):
 
 
 # 캡쳐 이미지 클래스
-class Capture():
+class Capture:
     MyPos_templ = cv2.imread('./img/My_Position.png', cv2.IMREAD_COLOR)
     MyPos_templ_mask = cv2.imread('./img/My_Position_mask.png', cv2.IMREAD_COLOR)
     Rune_templ = cv2.imread('./img/Is_Rune.png', cv2.IMREAD_COLOR)
@@ -437,7 +505,7 @@ class Capture():
             return 0, 0, 0, 0, con_pos1, con_pos2
 
 
-    def myPosition(self,img):
+    def myPosition(self, img):
         try:
             res_mypos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MyPos_templ, cv2.TM_CCORR_NORMED, mask=Capture.MyPos_templ_mask)
             con_mypos = res_mypos[res_mypos <= 1].max()
@@ -446,12 +514,15 @@ class Capture():
         except:
             return 0, 0
 
-    def runePosition(self,img):
+    def runePosition(self, img):
         try:
             res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.Rune_templ, cv2.TM_CCORR_NORMED, mask=Capture.Rune_templ_mask)
             con_runepos = res_runepos[res_runepos < 1].max()
             loc_runepos = np.where(res_runepos == con_runepos)
-            return loc_runepos[1][0], loc_runepos[0][0], con_runepos
+            if con_runepos > 0.98:
+                return loc_runepos[1][0], loc_runepos[0][0]
+            else:
+                return 0, 0
         except:
             return 0, 0
 
@@ -500,19 +571,21 @@ class MyWindow(QMainWindow, form_class):
         self.textInputTB1("중지합니다.")
 
     def onReloadClicked(self):
+        global disstat
         # print("load 버튼")
         self.textInputTB1("스크립트를 불러옵니다.")
+        disstat = 3
 
     def chkFunction(self):
-        global rune
+        global runecheck
         global inficheck
         # 무한반복
         if self.checkBox1.isChecked(): print("무한반복안함"); inficheck = 1
         if not self.checkBox1.isChecked(): print("무한반복함"); inficheck = 0
 
         # 룬체크
-        if self.checkBox2.isChecked(): print("룬체크안함"); rune[3] = 1
-        if not self.checkBox2.isChecked(): print("룬체크함"); rune[3] = 0
+        if self.checkBox2.isChecked(): print("룬체크안함"); runecheck = 1
+        if not self.checkBox2.isChecked(): print("룬체크함"); runecheck = 0
 
     # 텍스트 넣어주기 tI
     @pyqtSlot(str)
@@ -526,6 +599,7 @@ class MyWindow(QMainWindow, form_class):
     def startMacro(self):
         global mapleOn
         global miniMap
+        global ardu
         if self.isRun: print("이미 실행중입니다."); return
         self.isRun = True
         # 첫 시작눌렀을때 아두이노 세팅
@@ -543,8 +617,8 @@ class MyWindow(QMainWindow, form_class):
         # 두번째 시작을 눌렀을때
         else:
             try:
-                print("아두이노 마우스 체크중 마우스 건들 ㄴㄴ")
-                self.arduino.move(30, 30)
+                print("아두이노 마우스 체크중 건들 ㄴㄴ")
+                self.arduino.release_all()
                 print("아두이노 연결 확인 완료")
             except:
                 try:
@@ -556,30 +630,29 @@ class MyWindow(QMainWindow, form_class):
                     print("중지합니다.")
                     self.isRun = False
                     return
+        ardu = self.arduino
 
+        print("메이플 프로세스확인")
+        mapleOn = Capture.mapleOn(self)
+        if mapleOn[4] == 0:
+            print("메이플 확인 안됨")
+            print("중지합니다.")
+            self.isRun = False
+            return
+        print(mapleOn)
+        print("메이플 미니맵 확인")
+        bbox = (mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3])
+        screen = ImageGrab.grab(bbox)
+        # 시작 찰칵찰칵이
+        screen.save("./img/temp.png")
+        miniMap = Capture.miniMap(self, screen)
 
-
-        # print("메이플 프로세스확인")
-        # mapleOn = Capture.mapleOn(self)
-        # if mapleOn[4] == 0:
-        #     print("메이플 확인 안됨")
-        #     print("중지합니다.")
-        #     self.isRun = False
-        #     return
-        # print(mapleOn)
-        # print("메이플 미니맵 확인")
-        # bbox = (mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3])
-        # screen = ImageGrab.grab(bbox)
-        # # 시작 찰칵찰칵이
-        # screen.save("./img/temp.png")
-        # miniMap = Capture.miniMap(self,screen)
-
-        # print(miniMap)
-        # if miniMap[3] == 0:
-        #     print("미니맵 인식안됨")
-        #     print("중지합니다.")
-        #     self.isRun = False
-        #     return
+        print(miniMap)
+        if miniMap[3] == 0:
+            print("미니맵 인식안됨")
+            print("중지합니다.")
+            self.isRun = False
+            return
 
 
 
@@ -594,45 +667,10 @@ class MyWindow(QMainWindow, form_class):
         self.scriptworker = ScriptWorker()
         self.scriptworker.start()
         self.scriptworker.textInputTB1.connect(self.textInputTB1)
-        
+
         self.discordworker = DiscordWorker()
         self.discordworker.start()
         #self.discordworker.textInputTB1.connect(self.textInputTB1)
-        
-
-
-        # 매크로상태1 = True
-        # 매크로시간1 = time()
-        # 매크로1()
-        #     # screen = ImageGrab.grab(bbox)
-        #     # # 내위치 찾기
-        #     # crop_img = screen.crop(bboxMini)
-        #     # 내위치 = cp.myPosition(crop_img)
-        #
-        #     # 2초에 한번 위치 입력
-        #     if 켜진시간 % 2 == 0:
-        #         self.텍스트박스에입력하기(f'내위치 : {내위치}')
-        #     # 3초에 한번 룬 확인
-        #     if 켜진시간 % 3 == 0:
-        #         if not 룬상태:
-        #             룬시간 = 0
-        #             룬위치 = cp.runePosition(crop_img)
-        #             if 룬위치[2] >= 0.98:
-        #                 self.텍스트박스에입력하기(f'룬위치 : {룬위치}')
-        #                 룬상태 = True
-        #                 룬시간 = time()
-        #         else:
-        #             self.텍스트박스에입력하기(f'룬위치 : {룬위치}')
-        #             if time() - 룬시간 > 30:
-        #                 print("룬 시간 초과!!")
-        #     켜진시간 += 메인주기
-        #     켜진시간 = round(켜진시간, 2)
-        #     sleep(메인주기)
-        # else:
-        #     현재상태 = False
-        #     매크로상태1 = False
-        #     self.isRun = False
-        #     print("매크로 종료")
 
 
 # 캡쳐쓰레드
@@ -641,23 +679,40 @@ class CaptureWorker(QThread):
 
     def __init__(self):
         super().__init__()
-        self.num = 0
+        self.capturei = 0
         self.running = True
 
     def run(self):
-        global stat
         global mapleOn
         global miniMap
-        bbox = (mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3])
-        bboxMini = (miniMap[0],miniMap[1],miniMap[2],miniMap[3])
-        while self.running:
-            # 스샷
-            screen = ImageGrab.grab(bbox)
+        global disstat
+        self.bbox = (mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3])
+        self.bboxMini = (miniMap[0], miniMap[1], miniMap[2], miniMap[3])
+        disstat = 1
+        def myloce():
+            global stat
+            global rune
+            global disstat
+            screen = ImageGrab.grab(self.bbox)
             # 내위치 찾기
-            crop_img = screen.crop(bboxMini)
-            stat = Capture.myPosition(self,crop_img)
-            # self.textInputTB1.emit("내위치 " + str(stat[0]) + str(stat[1]))
-            self.sleep(1)
+            crop_img = screen.crop(self.bboxMini)
+            stat = Capture.myPosition(self, crop_img)
+            if self.capturei == 30:
+                self.capturei = 0
+                self.textInputTB1.emit("내위치 " + str(stat[0]) + str(stat[1]))
+                if runecheck == 0:
+                    rune = Capture.runePosition(self, crop_img)
+                    if not rune[1] == 0:
+                        disstat = 2
+                        self.textInputTB1.emit("룬위치 " + str(rune[0]) + str(rune[1]))
+            self.capturei += 1
+        # job1 내위치 0.1초마다
+        job1 = schedule.every(0.1).seconds.do(myloce)
+        while self.running:
+            schedule.run_pending()
+            time.sleep(0.1)
+        else:
+            schedule.cancel_job(job1)
 
     def resume(self):
         self.running = True
@@ -671,16 +726,172 @@ class CaptureWorker(QThread):
 class ScriptWorker(QThread):
     textInputTB1 = pyqtSignal(str)
     global stat
+    global rune
 
     def __init__(self):
         super().__init__()
+        self.runestack = None
+        self.starttime = None
+        self.scripti = None
         self.running = True
 
+    def 빠른이동(self):
+        print("빠른이동")
+    def 일반이동(self):
+        print("일반이동")
+
     def run(self):
+        self.scripti = 0
+        self.runeloce = 0, 0
+        self.runestack = 0
+        global disstat
+        global ardu
         while self.running:
-            # print("스크립트쓰레드")
-            # self.textInputTB1.emit("스크립트쓰레드 시작")
-            self.sleep(1)
+            #만약 룬
+            #if 룬
+            if disstat == 2:
+                if not rune[1] == 0:
+                    self.starttime = time.time()
+                    self.runeloce = rune
+                차이x = stat[0] - self.runeloce[0]
+                차이y = stat[1] - self.runeloce[1]
+                if 차이x > 40:
+                    print("왼쪽으로많이 이동")
+                    ardu.release(Keymouse.RIGHT_ARROW)
+                    ardu.press(Keymouse.LEFT_ARROW)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.3)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.2)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    time.sleep(1)
+                elif 40 > 차이x > 6:
+                    print("왼쪽 이동")
+                    ardu.release(Keymouse.RIGHT_ARROW)
+                    ardu.press(Keymouse.LEFT_ARROW)
+                    time.sleep(0.3)
+                elif 7 > 차이x > 1:
+                    print("왼쪽 조금 이동")
+                    ardu.release(Keymouse.RIGHT_ARROW)
+                    ardu.press(Keymouse.LEFT_ARROW)
+                elif -40 > 차이x:
+                    print("오른쪽으로많이 이동")
+                    ardu.release(Keymouse.LEFT_ARROW)
+                    ardu.press(Keymouse.RIGHT_ARROW)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.3)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.2)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    time.sleep(1)
+                    time.sleep(1)
+                elif -7 > 차이x > -40:
+                    print("오른쪽 이동")
+                    ardu.release(Keymouse.LEFT_ARROW)
+                    ardu.press(Keymouse.RIGHT_ARROW)
+                    time.sleep(0.3)
+                elif -1 > 차이x > -7:
+                    print("오른쪽 조금 이동")
+                    ardu.release(Keymouse.LEFT_ARROW)
+                    ardu.press(Keymouse.RIGHT_ARROW)
+                if 차이y > 40:
+                    print("위쪽으로많이 이동")
+                    ardu.press(Keymouse.UP_ARROW)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.UP_ARROW)
+                elif 40 > 차이y > 6:
+                    print("위쪽 이동")
+                    ardu.press(Keymouse.UP_ARROW)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.UP_ARROW)
+                elif 7 > 차이y > 1:
+                    print("위쪽 조금 이동")
+                    ardu.press(Keymouse.UP_ARROW)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.UP_ARROW)
+                elif -40 > 차이y:
+                    print("아래쪽으로많이 이동")
+                    ardu.press(Keymouse.DOWN_ARROW)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.4)
+                    ardu.release(Keymouse.DOWN_ARROW)
+                elif -7 > 차이y > -40:
+                    print("아래쪽 이동")
+                    ardu.release_all()
+                    ardu.press(Keymouse.DOWN_ARROW)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.4)
+                    ardu.release(Keymouse.DOWN_ARROW)
+                elif -1 > 차이y > -7:
+                    print("아래쪽 조금 이동")
+                    ardu.release_all()
+                    ardu.press(Keymouse.DOWN_ARROW)
+                    time.sleep(0.1)
+                    ardu.press(Keymouse.LEFT_ALT)
+                    time.sleep(0.1)
+                    ardu.release(Keymouse.LEFT_ALT)
+                    time.sleep(0.4)
+                    ardu.release(Keymouse.DOWN_ARROW)
+                if 0 <= abs(stat[0] - self.runeloce[0]) < 2 and 0 <= abs(stat[1] - self.runeloce[1]) < 2:
+                    ardu.release_all()
+                    self.runestack += 1
+                    if self.runestack == 10:
+                        self.runestack = 0
+                        print("룬 해제")
+                        ardu.press(" ")
+                        time.sleep(0.2)
+                        ardu.release(" ")
+                        disstat = 1
+                        print(time.time()-self.starttime)
+                time.sleep(0.1)
+            else:
+                #내위치
+                print("내위치")
+                print(stat)
+                time.sleep(0.1)
+
+
+
+
+
 
     def resume(self):
         self.running = True
@@ -689,18 +900,19 @@ class ScriptWorker(QThread):
         self.running = False
         print("스크립트 쓰레드 중지")
 
+
 # 디스코드 쓰레드
 class DiscordWorker(QThread):
     global distoken
     global bot
-    
+
     def __init__(self):
         super().__init__()
         self.running = True
-        
+
     def run(self):
         bot.run(distoken)
-        
+
     def resume(self):
         self.running = True
 

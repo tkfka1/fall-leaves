@@ -477,6 +477,8 @@ class Capture:
     Rune_Check_templ = cv2.imread('./img/Rune_Check.png', cv2.IMREAD_COLOR)
     MiniLU = cv2.imread('./img/minimapLU.png', cv2.IMREAD_COLOR)
     MiniRD = cv2.imread('./img/minimapRD.png', cv2.IMREAD_COLOR)
+    MiniLU_mask = cv2.imread('./img/minimapLU_mask.png', cv2.IMREAD_COLOR)
+    MiniRD_mask = cv2.imread('./img/minimapRD_mask.png', cv2.IMREAD_COLOR)
 
     # 메이플 켜져있나 확인
     def mapleOn(self):
@@ -490,16 +492,16 @@ class Capture:
         return result
 
     def miniMap(self, img):
-        img = img.crop((0, 0, 500, 500))
-        res_pos1 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniLU, cv2.TM_CCORR_NORMED)
+        img = img.crop((0, 0, 400, 400))
+        res_pos1 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniLU, cv2.TM_CCORR_NORMED, mask=Capture.MiniLU_mask)
         con_pos1 = res_pos1.max()
         loc_pos1 = np.where(res_pos1 == con_pos1)
 
-        res_pos2 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniRD, cv2.TM_CCORR_NORMED)
+        res_pos2 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniRD, cv2.TM_CCORR_NORMED, mask=Capture.MiniRD_mask)
         con_pos2 = res_pos2.max()
         loc_pos2 = np.where(res_pos2 == con_pos2)
         # img.save("./img/tempmini.png")
-        if con_pos1 > 0.95 and con_pos2 > 0.95:
+        if con_pos1 > 0.98 and con_pos2 > 0.98:
             return loc_pos1[1][0] + 1, loc_pos1[0][0] + 1, loc_pos2[1][0] + 12, loc_pos2[0][0] + 11, con_pos1, con_pos2
         else:
             return 0, 0, 0, 0, con_pos1, con_pos2
@@ -510,7 +512,10 @@ class Capture:
             res_mypos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MyPos_templ, cv2.TM_CCORR_NORMED, mask=Capture.MyPos_templ_mask)
             con_mypos = res_mypos[res_mypos <= 1].max()
             loc_mypos = np.where(res_mypos == con_mypos)
-            return loc_mypos[1][0], loc_mypos[0][0]
+            if con_mypos > 0.98:
+                return loc_mypos[1][0], loc_mypos[0][0]
+            else:
+                return 0, 0
         except:
             return 0, 0
 
@@ -519,7 +524,9 @@ class Capture:
             res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.Rune_templ, cv2.TM_CCORR_NORMED, mask=Capture.Rune_templ_mask)
             con_runepos = res_runepos[res_runepos < 1].max()
             loc_runepos = np.where(res_runepos == con_runepos)
-            if con_runepos > 0.98:
+            # img.save("./img/tempmini.png")
+            print(loc_runepos[1][0], loc_runepos[0][0], con_runepos)
+            if con_runepos > 0.83:
                 return loc_runepos[1][0], loc_runepos[0][0]
             else:
                 return 0, 0
@@ -750,9 +757,10 @@ class ScriptWorker(QThread):
             #만약 룬
             #if 룬
             if disstat == 2:
-                if not rune[1] == 0:
-                    self.starttime = time.time()
-                    self.runeloce = rune
+                if self.runeloce[0] == 0:
+                    if not rune[1] == 0:
+                        self.starttime = time.time()
+                        self.runeloce = rune
                 차이x = stat[0] - self.runeloce[0]
                 차이y = stat[1] - self.runeloce[1]
                 if 차이x > 40:
@@ -767,17 +775,17 @@ class ScriptWorker(QThread):
                     ardu.press(Keymouse.LEFT_ALT)
                     time.sleep(0.2)
                     ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
                     time.sleep(1)
                 elif 40 > 차이x > 6:
                     print("왼쪽 이동")
                     ardu.release(Keymouse.RIGHT_ARROW)
                     ardu.press(Keymouse.LEFT_ARROW)
-                    time.sleep(0.3)
-                elif 7 > 차이x > 1:
+                    time.sleep(0.2)
+                elif 7 > 차이x > 2:
                     print("왼쪽 조금 이동")
                     ardu.release(Keymouse.RIGHT_ARROW)
                     ardu.press(Keymouse.LEFT_ARROW)
+                    time.sleep(0.05)
                 elif -40 > 차이x:
                     print("오른쪽으로많이 이동")
                     ardu.release(Keymouse.LEFT_ARROW)
@@ -790,18 +798,17 @@ class ScriptWorker(QThread):
                     ardu.press(Keymouse.LEFT_ALT)
                     time.sleep(0.2)
                     ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    time.sleep(1)
                     time.sleep(1)
                 elif -7 > 차이x > -40:
                     print("오른쪽 이동")
                     ardu.release(Keymouse.LEFT_ARROW)
                     ardu.press(Keymouse.RIGHT_ARROW)
-                    time.sleep(0.3)
+                    time.sleep(0.2)
                 elif -1 > 차이x > -7:
                     print("오른쪽 조금 이동")
                     ardu.release(Keymouse.LEFT_ARROW)
                     ardu.press(Keymouse.RIGHT_ARROW)
+                    time.sleep(0.05)
                 if 차이y > 40:
                     print("위쪽으로많이 이동")
                     ardu.press(Keymouse.UP_ARROW)
@@ -815,7 +822,7 @@ class ScriptWorker(QThread):
                     ardu.release(Keymouse.LEFT_ALT)
                     time.sleep(0.1)
                     ardu.release(Keymouse.UP_ARROW)
-                elif 40 > 차이y > 6:
+                elif 40 > 차이y > 14:
                     print("위쪽 이동")
                     ardu.press(Keymouse.UP_ARROW)
                     time.sleep(0.1)
@@ -828,13 +835,9 @@ class ScriptWorker(QThread):
                     ardu.release(Keymouse.LEFT_ALT)
                     time.sleep(0.1)
                     ardu.release(Keymouse.UP_ARROW)
-                elif 7 > 차이y > 1:
+                elif 15 > 차이y > 2:
                     print("위쪽 조금 이동")
                     ardu.press(Keymouse.UP_ARROW)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
                     time.sleep(0.1)
                     ardu.press(Keymouse.LEFT_ALT)
                     time.sleep(0.1)
@@ -850,9 +853,8 @@ class ScriptWorker(QThread):
                     ardu.release(Keymouse.LEFT_ALT)
                     time.sleep(0.4)
                     ardu.release(Keymouse.DOWN_ARROW)
-                elif -7 > 차이y > -40:
+                elif -16 > 차이y > -40:
                     print("아래쪽 이동")
-                    ardu.release_all()
                     ardu.press(Keymouse.DOWN_ARROW)
                     time.sleep(0.1)
                     ardu.press(Keymouse.LEFT_ALT)
@@ -860,9 +862,8 @@ class ScriptWorker(QThread):
                     ardu.release(Keymouse.LEFT_ALT)
                     time.sleep(0.4)
                     ardu.release(Keymouse.DOWN_ARROW)
-                elif -1 > 차이y > -7:
+                elif -1 > 차이y > -15:
                     print("아래쪽 조금 이동")
-                    ardu.release_all()
                     ardu.press(Keymouse.DOWN_ARROW)
                     time.sleep(0.1)
                     ardu.press(Keymouse.LEFT_ALT)
@@ -870,22 +871,22 @@ class ScriptWorker(QThread):
                     ardu.release(Keymouse.LEFT_ALT)
                     time.sleep(0.4)
                     ardu.release(Keymouse.DOWN_ARROW)
-                if 0 <= abs(stat[0] - self.runeloce[0]) < 2 and 0 <= abs(stat[1] - self.runeloce[1]) < 2:
+                if 0 <= abs(stat[0] - self.runeloce[0]) < 3 and 0 <= abs(stat[1] - self.runeloce[1]) < 2:
                     ardu.release_all()
+                    print("룬 해제")
+                    ardu.press(" ")
+                    time.sleep(0.2)
+                    ardu.release(" ")
                     self.runestack += 1
-                    if self.runestack == 10:
-                        self.runestack = 0
-                        print("룬 해제")
-                        ardu.press(" ")
-                        time.sleep(0.2)
-                        ardu.release(" ")
-                        disstat = 1
-                        print(time.time()-self.starttime)
-                time.sleep(0.1)
+                    time.sleep(0.1)
+                    disstat = 1
+                    self.runeloce = 0, 0
+                    print(time.time()-self.starttime)
+                    time.sleep(0.4)
             else:
                 #내위치
-                print("내위치")
-                print(stat)
+                # print("내위치")
+                # print(stat)
                 time.sleep(0.1)
 
 

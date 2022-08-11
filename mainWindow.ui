@@ -15,7 +15,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>milfICON.PNG</normaloff>milfICON.PNG</iconset>
+    <normaloff>img/milfICON.PNG</normaloff>img/milfICON.PNG</iconset>
   </property>
   <property name="windowOpacity">
    <double>1.000000000000000</double>

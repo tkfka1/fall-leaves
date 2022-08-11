@@ -7,7 +7,6 @@ import win32gui
 import win32api
 from PIL import ImageGrab, Image
 import serial.tools.list_ports
-import serial.tools.list_ports
 import threading
 import serial
 import struct
@@ -592,7 +591,6 @@ class MyWindow(QMainWindow, form_class):
 
     def __init__(self):
         super().__init__()
-        self.arduino = None
         self.scriptworker = None
         self.captureworker = None
         self.discordworker = None
@@ -672,15 +670,22 @@ class MyWindow(QMainWindow, form_class):
         print("test1 시작")
         self.time = time.time()
         global ardu
-        self.arduino = Arduino()
-        ardu = self.arduino
-        move(30,30)
+        ardu = Arduino()
         time.sleep(1)
         print(f"test1 종료 걸린시간 = {time.time() - self.time}")
     def onTest2Clicked(self):
-        print("test2")
+        global ardu
+        print("test2 시작")
+        self.time = time.time()
+        r = (149,20)
+        gotorune(r)
+
+
+        print(f"test2 종료 걸린시간 = {time.time() - self.time}")
     def onTest3Clicked(self):
+        global ardu
         print("test3")
+        ardu.release_all()
     def chkFunction(self):
         global runecheck
         global inficheck
@@ -710,7 +715,7 @@ class MyWindow(QMainWindow, form_class):
         if self.firstMacro:
             print("아두이노 확인")
             try:
-                self.arduino = Arduino()
+                ardu = Arduino()
                 print("아두이노 확인 완료")
                 self.firstMacro = False
             except:
@@ -722,11 +727,11 @@ class MyWindow(QMainWindow, form_class):
         else:
             try:
                 print("아두이노 마우스 체크중 건들 ㄴㄴ")
-                self.arduino.release_all()
+                ardu.release_all()
                 print("아두이노 연결 확인 완료")
             except:
                 try:
-                    self.arduino = Arduino()
+                    ardu = Arduino()
                     print("아두이노 재연결 완료")
                     self.firstMacro = False
                 except:
@@ -734,7 +739,6 @@ class MyWindow(QMainWindow, form_class):
                     print("중지합니다.")
                     self.isRun = False
                     return
-        ardu = self.arduino
 
         print("메이플 프로세스확인")
         mapleOn = Capture.mapleOn(self)
@@ -860,6 +864,8 @@ class ScriptWorker(QThread):
         global sc
         global mapleOn
         global screen
+        global stat
+        i = 0
         while self.running:
             if not sc == None:
                 #if 룬
@@ -870,15 +876,16 @@ class ScriptWorker(QThread):
                             self.starttime = time.time()
                             self.runeloce = rune
                     # 룬위치 설정이 되었다면
-                    gotorune(stat, self.runeloce)
+                    # gotorune(self.runeloce)
                     # 룬 완료시
                     if 0 <= abs(stat[0] - self.runeloce[0]) < 3 and 0 <= abs(stat[1] - self.runeloce[1]) < 2:
-                        ardu.release_all()
+                        print("룬 해제 3")
+                        time.sleep(1)
+                        print("룬 해제 2")
+                        time.sleep(1)
+                        print("룬 해제 1")
+                        time.sleep(1)
                         print("룬 해제")
-                        ardu.press(" ")
-                        time.sleep(0.2)
-                        ardu.release(" ")
-                        time.sleep(0.1)
                         #딥쁘러닝
                         image_array = np.array(screen)
                         with tf.device('/gpu:0'):

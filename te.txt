@@ -12,6 +12,8 @@ pip install py-cord==2.0.0b5
 pip install -U git+https://github.com/Pycord-Development/pycord
 
 conda install -c anaconda pywin32
+pip install tensorflow-gpu
+
 
 https://www.arduino.cc/en/software
 https://github.com/Pycord-Development/pycord

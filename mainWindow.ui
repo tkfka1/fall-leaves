@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>523</width>
-    <height>377</height>
+    <width>522</width>
+    <height>378</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -185,6 +185,58 @@
      <attribute name="title">
       <string>디버그</string>
      </attribute>
+     <widget class="QPushButton" name="mainBtn4">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>30</y>
+        <width>81</width>
+        <height>35</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>룬찾기</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="testBtn1">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>200</y>
+        <width>81</width>
+        <height>35</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>테스트버튼1</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="testBtn2">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>240</y>
+        <width>81</width>
+        <height>35</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>테스트버튼2</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="testBtn3">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>280</y>
+        <width>81</width>
+        <height>35</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>테스트버튼3</string>
+      </property>
+     </widget>
     </widget>
     <widget class="QWidget" name="tab_3">
      <attribute name="title">
@@ -222,38 +274,6 @@
     </property>
     <property name="pixmap">
      <pixmap>../MiraiOfSetsuna/data/img/testImg.jpg</pixmap>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="mainBtn4">
-    <property name="geometry">
-     <rect>
-      <x>530</x>
-      <y>280</y>
-      <width>129</width>
-      <height>35</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>룬찾기</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="debugBtn2">
-    <property name="geometry">
-     <rect>
-      <x>530</x>
-      <y>330</y>
-      <width>129</width>
-      <height>35</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Arial</family>
-      <pointsize>8</pointsize>
-     </font>
-    </property>
-    <property name="text">
-     <string>캡쳐</string>
     </property>
    </widget>
   </widget>

@@ -1,5 +1,3 @@
-from lib2to3.pgen2 import token
-import random
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
@@ -7,20 +5,23 @@ import cv2
 import numpy as np
 import win32gui
 import win32api
-from PIL import ImageGrab , Image
+from PIL import ImageGrab, Image
 import serial.tools.list_ports
 import serial.tools.list_ports
 import threading
 import serial
 import struct
-import ctypes
 import sys
 import asyncio
 import discord
-from discord.ui import Button, View
 from discord.ext import commands
 import time
 import schedule
+import tensorflow as tf
+global PATH_TO_MODELS
+PATH_TO_MODELS = './RuneAuto/saved_model'
+global model
+model = None
 
 form_class = uic.loadUiType("mainWindow.ui")[0]
 print(cv2.__file__)
@@ -48,6 +49,10 @@ inficheck = 0
 
 global ardu
 ardu = None
+global screen
+screen = Image.open("./img/rune_ready.jpg")
+global sc
+sc = None
 #디스코드 상태
 global disstat
 disstat = 0
@@ -87,9 +92,20 @@ user = 324926800805494784
 
 @bot.event
 async def on_ready():
-    print('Bot Is Ready')
+    global model
+    global runecheck
+    print('디코봇 시작')
+    if runecheck == 0:
+        model = tf.saved_model.load(PATH_TO_MODELS)
+        screen = Image.open("./img/rune_ready.jpg")
+        image_array = np.array(screen)
+        with tf.device('/gpu:0'):
+            results = inference_from_model(image_array)
+        print(results)
+        print("딥러닝 준비 완료")
     await bot.change_presence(status=discord.Status.online, activity=discord.Game("재밌는 일"))
     await bt()
+
 
 
 # 받으면 삭제하고 바꾸기
@@ -113,12 +129,13 @@ async def ping(ctx):
 
 
 #disstat = 0  중지 1 정상동작중 2 룬찾기 3 알람 4 거탐 5 비올레타
-# 디스코드 모니터 쓰레드
+# 디스코드 모니터 및 딥쁘러닝 쓰레드
 async def bt():
     global channel
     global user
     channel = bot.get_channel(channel)
     user = await bot.fetch_user(user)
+
 
     await bot.wait_until_ready()
     i = 0
@@ -135,15 +152,16 @@ async def bt():
                 await channel.send("정상동작중입니다.")
             i = i+1
         elif disstat == 2:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("일시정지"))
+            await bot.change_presence(status=discord.Status.online, activity=discord.Game("일시정지"))
         elif disstat == 3:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("룬찾기"))
+            await bot.change_presence(status=discord.Status.online, activity=discord.Game("룬찾기"))
         elif disstat == 4:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("거탐"))
+            await bot.change_presence(status=discord.Status.online, activity=discord.Game("거탐"))
             await user.send('(＼(・ω ・＼)SAN치！(／・ω・)／FIN치！')
         elif disstat == 5:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("비올레타"))
+            await bot.change_presence(status=discord.Status.online, activity=discord.Game("비올레타"))
             await user.send('(」・ω・)」우―！(／・ω・)／냐―！')
+
         await asyncio.sleep(1)
 
 
@@ -529,13 +547,45 @@ class Capture:
             con_runepos = minVal
             loc_runepos = minLoc
             # img.save("./img/tempmini.png")
-            print(minVal, maxVal, minLoc, maxLoc)
+            # print(minVal, maxVal, minLoc, maxLoc)
             if con_runepos < 0.01:
                 return loc_runepos[0], loc_runepos[1]
             else:
                 return 0, 0
         except:
             return 0, 0
+
+
+
+
+
+## 룬딥쁘러닝
+def inference_from_model(image, threshold=None):
+    global model
+    img = image.copy()
+    input_tensor = tf.convert_to_tensor(img)
+    input_tensor = input_tensor[tf.newaxis, ...]
+    model_fn = model.signatures['serving_default']
+    output_dict = model_fn(input_tensor)
+    num_detections = int(output_dict.pop('num_detections'))
+    output_dict = {key: value[0, :num_detections].numpy()
+                   for key, value in output_dict.items()}
+    output_dict['num_detections'] = num_detections
+    output_dict['detection_classes'] = output_dict['detection_classes'].astype(np.int64)
+    if threshold is not None:
+        detect_class = np.array([value for index, value in enumerate(output_dict['detection_classes'])
+                                 if output_dict['detection_scores'][index] > threshold])
+        detect_coord = np.array([value for index, value in enumerate(output_dict['detection_boxes'])
+                                 if output_dict['detection_scores'][index] > threshold])
+        if len(detect_class) == 0:
+            return np.array([])
+    else:
+        detect_class = output_dict['detection_classes'][:4]
+        detect_coord = output_dict['detection_boxes'][:4]
+    return detect_class[np.argsort(detect_coord[:, 1])[::-1]]
+
+
+
 
 # 메인 윈도우 클래스
 class MyWindow(QMainWindow, form_class):
@@ -555,6 +605,10 @@ class MyWindow(QMainWindow, form_class):
         self.mainBtn1.clicked.connect(self.onStartClicked)  # 시작
         self.mainBtn2.clicked.connect(self.onStopClicked)  # 중지
         self.mainBtn3.clicked.connect(self.onReloadClicked)  # 불러오기
+        self.mainBtn4.clicked.connect(self.onRuneClicked)  # 룬찾기
+        self.testBtn1.clicked.connect(self.onTest1Clicked)  # test1
+        self.testBtn2.clicked.connect(self.onTest2Clicked)  # test2
+        self.testBtn3.clicked.connect(self.onTest3Clicked)  # test3
         self.checkBox1.stateChanged.connect(self.chkFunction)  # 무한반복
         self.checkBox2.stateChanged.connect(self.chkFunction)  # 룬체크(딥러닝안함)
 
@@ -585,17 +639,54 @@ class MyWindow(QMainWindow, form_class):
 
     def onReloadClicked(self):
         global disstat
+        global sc
         # print("load 버튼")
         self.textInputTB1("스크립트를 불러옵니다.")
-        disstat = 3
 
+        filename = QFileDialog.getOpenFileName(directory="./script", filter="script (*.py)")
+        filename = filename[0]
+        print("open file:", filename)
+        if not filename:
+            return
+        with open(filename):
+            print("filename")
+            self.textInputTB1(f'{filename}')
+            exec(open(f'{filename}', encoding='utf-8').read(), globals())
+            sc = filename.split('/')[-1].split('.')[0]
+            self.helo = hello()
+
+        self.textInputTB1(f'{sc} script load.')
+        self.textInputTB1(f'{self.helo}')
+
+    def onRuneClicked(self):
+        global mapleOn
+        global screen
+        image_array = np.array(screen)
+        with tf.device('/gpu:0'):
+            results = inference_from_model(image_array)
+        rune_screen = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(f'./img/rune/{int(time.time())}.jpg', rune_screen)
+        print(results)
+
+    def onTest1Clicked(self):
+        print("test1 시작")
+        self.time = time.time()
+        global ardu
+        self.arduino = Arduino()
+        ardu = self.arduino
+        move(30,30)
+        time.sleep(1)
+        print(f"test1 종료 걸린시간 = {time.time() - self.time}")
+    def onTest2Clicked(self):
+        print("test2")
+    def onTest3Clicked(self):
+        print("test3")
     def chkFunction(self):
         global runecheck
         global inficheck
         # 무한반복
         if self.checkBox1.isChecked(): print("무한반복안함"); inficheck = 1
         if not self.checkBox1.isChecked(): print("무한반복함"); inficheck = 0
-
         # 룬체크
         if self.checkBox2.isChecked(): print("룬체크안함"); runecheck = 1
         if not self.checkBox2.isChecked(): print("룬체크함"); runecheck = 0
@@ -675,12 +766,11 @@ class MyWindow(QMainWindow, form_class):
         self.captureworker.start()
         self.captureworker.textInputTB1.connect(self.textInputTB1)
 
-        print("스크립트 불러오기")
         print("스크립트 쓰레드 시작")
         self.scriptworker = ScriptWorker()
         self.scriptworker.start()
         self.scriptworker.textInputTB1.connect(self.textInputTB1)
-
+        print("디스코드 딥러닝 쓰레드 시작")
         self.discordworker = DiscordWorker()
         self.discordworker.start()
         #self.discordworker.textInputTB1.connect(self.textInputTB1)
@@ -701,29 +791,27 @@ class CaptureWorker(QThread):
         global disstat
         self.bbox = (mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3])
         self.bboxMini = (miniMap[0], miniMap[1], miniMap[2], miniMap[3])
-        disstat = 1
         def myloce():
             global stat
             global rune
             global disstat
             global runetime
+            global screen
             screen = ImageGrab.grab(self.bbox)
             # 내위치 찾기
             crop_img = screen.crop(self.bboxMini)
             stat = Capture.myPosition(self, crop_img)
+            self.textInputTB1.emit("내위치 " + str(stat[0]) + str(stat[1]))
             #약 5초마다 반복 룬찾기 및 내위치
             if self.capturei == 30:
                 self.capturei = 0
-                # self.textInputTB1.emit("내위치 " + str(stat[0]) + str(stat[1]))
                 if runecheck == 0:
                     self.runet = time.time()
-                    print(runetime)
-                    print(self.runet-runetime)
                     if self.runet-runetime > 900:
                         rune = Capture.runePosition(self, crop_img)
                         if not rune[1] == 0:
                             disstat = 3
-                            self.textInputTB1.emit("룬위치 " + str(rune[0]) + str(rune[1]))
+                            self.textInputTB1.emit("룬출현 " + str(rune[0]) + str(rune[1]))
             self.capturei += 1
         # job1 내위치 0.1초마다
         job1 = schedule.every(0.1).seconds.do(myloce)
@@ -747,10 +835,12 @@ class ScriptWorker(QThread):
     global stat
     global rune
 
+
     def __init__(self):
+
         super().__init__()
         self.runestack = None
-        self.starttime = None
+        self.starttime = 0
         self.scripti = None
         self.running = True
 
@@ -760,149 +850,60 @@ class ScriptWorker(QThread):
         print("일반이동")
 
     def run(self):
-        self.scripti = 0
+        self.hunttime = time.time()
         self.runeloce = 0, 0
         self.runestack = 0
         global disstat
         global ardu
         global runetime
+        global model
+        global sc
+        global mapleOn
+        global screen
         while self.running:
-            #만약 룬
-            #if 룬
-            if disstat == 3:
-                if self.runeloce[0] == 0:
-                    if not rune[1] == 0:
-                        self.starttime = time.time()
-                        self.runeloce = rune
-                차이x = stat[0] - self.runeloce[0]
-                차이y = stat[1] - self.runeloce[1]
-                if 차이x > 40:
-                    print("왼쪽으로많이 이동")
-                    ardu.release(Keymouse.RIGHT_ARROW)
-                    ardu.press(Keymouse.LEFT_ARROW)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.3)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.2)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(1)
-                elif 40 > 차이x > 6:
-                    print("왼쪽 이동")
-                    ardu.release(Keymouse.RIGHT_ARROW)
-                    ardu.press(Keymouse.LEFT_ARROW)
-                    time.sleep(0.2)
-                elif 7 > 차이x > 2:
-                    print("왼쪽 조금 이동")
-                    ardu.release(Keymouse.RIGHT_ARROW)
-                    ardu.press(Keymouse.LEFT_ARROW)
-                    time.sleep(0.05)
-                elif -40 > 차이x:
-                    print("오른쪽으로많이 이동")
-                    ardu.release(Keymouse.LEFT_ARROW)
-                    ardu.press(Keymouse.RIGHT_ARROW)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.3)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.2)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(1)
-                elif -7 > 차이x > -40:
-                    print("오른쪽 이동")
-                    ardu.release(Keymouse.LEFT_ARROW)
-                    ardu.press(Keymouse.RIGHT_ARROW)
-                    time.sleep(0.2)
-                elif -1 > 차이x > -7:
-                    print("오른쪽 조금 이동")
-                    ardu.release(Keymouse.LEFT_ARROW)
-                    ardu.press(Keymouse.RIGHT_ARROW)
-                    time.sleep(0.05)
-                if 차이y > 40:
-                    print("위쪽으로많이 이동")
-                    ardu.press(Keymouse.UP_ARROW)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.UP_ARROW)
-                elif 40 > 차이y > 14:
-                    print("위쪽 이동")
-                    ardu.press(Keymouse.UP_ARROW)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.UP_ARROW)
-                elif 15 > 차이y > 2:
-                    print("위쪽 조금 이동")
-                    ardu.press(Keymouse.UP_ARROW)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.UP_ARROW)
-                elif -40 > 차이y:
-                    print("아래쪽으로많이 이동")
-                    ardu.press(Keymouse.DOWN_ARROW)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.4)
-                    ardu.release(Keymouse.DOWN_ARROW)
-                elif -16 > 차이y > -40:
-                    print("아래쪽 이동")
-                    ardu.press(Keymouse.DOWN_ARROW)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.4)
-                    ardu.release(Keymouse.DOWN_ARROW)
-                elif -1 > 차이y > -15:
-                    print("아래쪽 조금 이동")
-                    ardu.press(Keymouse.DOWN_ARROW)
-                    time.sleep(0.1)
-                    ardu.press(Keymouse.LEFT_ALT)
-                    time.sleep(0.1)
-                    ardu.release(Keymouse.LEFT_ALT)
-                    time.sleep(0.4)
-                    ardu.release(Keymouse.DOWN_ARROW)
-                if 0 <= abs(stat[0] - self.runeloce[0]) < 3 and 0 <= abs(stat[1] - self.runeloce[1]) < 2:
-                    ardu.release_all()
-                    print("룬 해제")
-                    ardu.press(" ")
-                    time.sleep(0.2)
-                    ardu.release(" ")
-                    self.runestack += 1
-                    time.sleep(0.1)
-                    disstat = 1
-                    runetime = time.time()
-                    self.runeloce = 0, 0
-                    print(time.time()-self.starttime)
-                    time.sleep(0.4)
+            if not sc == None:
+                #if 룬
+                if disstat == 3:
+                    # 룬로케로 룬위치 설정
+                    if self.runeloce[0] == 0:
+                        if not rune[1] == 0:
+                            self.starttime = time.time()
+                            self.runeloce = rune
+                    # 룬위치 설정이 되었다면
+                    gotorune(stat, self.runeloce)
+                    # 룬 완료시
+                    if 0 <= abs(stat[0] - self.runeloce[0]) < 3 and 0 <= abs(stat[1] - self.runeloce[1]) < 2:
+                        ardu.release_all()
+                        print("룬 해제")
+                        ardu.press(" ")
+                        time.sleep(0.2)
+                        ardu.release(" ")
+                        time.sleep(0.1)
+                        #딥쁘러닝
+                        image_array = np.array(screen)
+                        with tf.device('/gpu:0'):
+                            results = inference_from_model(image_array)
+                        rune_screen = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+                        cv2.imwrite(f'./img/rune/{int(time.time())}.jpg', rune_screen)
+                        print(results)
+                        #결과 완료면
+                        # 디스스텟 동작중변경
+                        disstat = 1
+                        #룬시간 초기화
+                        runetime = time.time()
+                        #룬위치 초기화
+                        self.runeloce = 0, 0
+                        print(f"룬까는데 걸린 시간 = {runetime - self.starttime}")
+                        #사냥시간 초기화
+                        self.hunttime = time.time()
+                else:
+                    #내위치
+                    # print("내위치")
+                    # print(stat)
+                    gotohunt(stat,self.hunttime)
             else:
-                #내위치
-                # print("내위치")
-                # print(stat)
-                time.sleep(0.1)
-
+                print("스크립트가 없습니다.")
+                time.sleep(1)
 
 
 
@@ -927,8 +928,11 @@ class DiscordWorker(QThread):
         self.running = True
 
     def run(self):
+        global disstat
         if disstat == 0:
+            disstat = 1
             bot.run(distoken)
+
 
     def resume(self):
         self.running = True

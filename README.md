@@ -7,22 +7,35 @@ Hi! I'm your  **MapleStory** macro.
 # Installation
 
 **pyqt5**
+
 pip install pyqt5
+
 **cv2**
+
 pip install opencv-python
+
 **win32api**
+
 pip install pypiwin32
+
 **pil**
+
 pip install pillow
+
 **serial**
+
 pip install pyserial
+
 **discord**
-pip install py-cord==2.0.0b5 **or**
-pip install -U git+https://github.com/Pycord-Development/pycord
+
+pip install py-cord==2.0.0b5 **or** pip install -U git+https://github.com/Pycord-Development/pycord
+
 **tensorflow**
+
 pip install tensorflow-gpu
 
 **arduino**
+
 https://www.arduino.cc/en/software
 
 

@@ -20,3 +20,25 @@ https://github.com/Pycord-Development/pycord
 https://docs.pycord.dev/en/master/#getting-started
 
 https://cog-creators.github.io/discord-embed-sandbox/
+
+
+중지 여러번 눌러야 됨
+
+
+디스코드 토큰
+miari-1 
+'MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0'
+
+global channel
+channel = 1006538980956831764
+global user
+user = 324926800805494784
+
+
+스크립트제작모드. 룬탐지X , 딥러닝 X , 디스코드X 
+
+미니맵체크는 메이플체크를 하지 않으면 동작 X
+
+마일리지먹기
+
+디스코드 연동

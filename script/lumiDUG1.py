@@ -1,5 +1,16 @@
 import time
+import random
 global ardu
+global hunt
+hunt = 0
+global timer1
+global timer2
+global timer3
+global timer4
+timer1 = 0
+timer2 = 0
+timer3 = 0
+timer4 = 0
 
 
 
@@ -9,18 +20,26 @@ def hello():
     return "루미 동윗깊1 스크립트 불러옴"
 
 # 기본 키보드마우스 제어 함수
-# def press(x):
-#     ardu.press(x)
-# def release(x):
-#     ardu.release(x)
-# def release_all():
-#     ardu.release_all()
-# def move(x,y):
-#     ardu.move(x,y)
-# def bezier_move(x,y):
-#     ardu.bezier_move(x,y)
-# def write(x):
-#     ardu.write(x)
+def pre(x):
+    ardu.press(x)
+def rel(x):
+    ardu.release(x)
+def rel_all():
+    ardu.release_all()
+def move(x, y):
+    ardu.move(x, y)
+def bezier_move(x,y):
+    ardu.bezier_move(x, y)
+def write(x):
+    ardu.write(x)
+
+# 0~0.1 rand
+def randtime():
+    a = random.random()
+    b = a/10
+    time.sleep(b)
+
+
 
 MOUSE_CMD            = 0xE0
 MOUSE_CALIBRATE      = 0xE1
@@ -238,9 +257,63 @@ def gotorune(r):
         #     print("도차쿠")
 
 
-
 # 사냥 함수 필수
-def gotohunt(stat,hunttime):
-    print("사냥하좌")
-    print(stat, hunttime)
-    time.sleep(1)
+def gotohunt(hunttime):
+    global stat
+    global hunt
+    global timer1
+    global timer2
+    global timer3
+    global timer4
+    x = stat[0]
+    y = stat[1]
+
+    # 사냥 처음 시작한다면
+    if hunt == 0:
+        hunt = 1
+        timer1 = time.time()
+        timer2 = time.time()
+        timer3 = time.time()
+        timer4 = time.time()
+
+    elif hunt == 1:
+        t1 = timer1 - hunttime
+        t2 = timer2 - hunttime
+        t3 = timer3 - hunttime
+        t4 = timer4 - hunttime
+        ti = time.time() - hunttime
+        print(ti)
+        if random.randrange(1,100) == 100:
+            print("병신짓")
+        else:
+            #동윗깊 위치
+            # 만약 위치
+            if y < 25:
+                if x > 196:
+                    print("왼쪽")
+                    rel(RIGHT_ARROW)
+                    randtime()
+                    pre(LEFT_ARROW)
+                    randtime()
+                elif x < 35:
+                    print("오른쪽")
+                    rel(LEFT_ARROW)
+                    randtime()
+                    pre(RIGHT_ARROW)
+                    randtime()
+                pre('z')
+                randtime()
+                rel('z')
+                pre(LEFT_CTRL)
+                randtime()
+                rel(LEFT_CTRL)
+            randtime()
+
+
+
+
+# 동윗깊1
+# 맨윗줄 y 20
+# 오른상단 x 209 146
+# 가운상단 x 138 92 y 20
+# 왼상단 x 86 22

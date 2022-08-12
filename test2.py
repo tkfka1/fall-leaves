@@ -348,6 +348,14 @@ ardui()
 ardui()
 ardui()
 ardui()
+i = 0
+while True:
+    if i == 15:
+        ardu.release_all()
+        break
+    i += 1
+    time.sleep(1)
+    ardui()
 
 print("sad")
 time.sleep(3)

@@ -1,6 +1,9 @@
+import distutils
+import os
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
+from PyQt5.QtGui import QPixmap
 import cv2
 import numpy as np
 import win32gui
@@ -17,20 +20,129 @@ from discord.ext import commands
 import time
 import schedule
 import tensorflow as tf
+import configparser
+
+form_class = uic.loadUiType("mainWindow.ui")[0]
+global mytype
+global caplil
+global maplecheck
+global minimapcheck
+global loccheck
+global runecheck
+global runedeep
+global useardu
+global usedisbot
+global distoken
+global channel
+global user
+mytype = "기본동작모드"
+caplil = 0.1
+maplecheck = False
+minimapcheck = False
+loccheck = False
+runecheck = False
+runedeep = False
+useardu = False
+usedisbot = False
+distoken = ""
+channel = 0
+user = 0
+
+# config 만들기
+def make_config():
+    global mytype
+    global caplil
+    global loccheck
+    global runecheck
+    global runedeep
+    global useardu
+    global usedisbot
+    global distoken
+    global channel
+    global user
+    config = configparser.ConfigParser()
+    # 설정파일 오브젝트 만들기
+    config['main'] = {}
+    config['main']['시작타입'] = mytype
+    config['capture'] = {}
+    config['capture']['캡쳐 주기'] = str(caplil)
+    config['capture']['메이플체크'] = str(maplecheck)
+    config['capture']['미니맵체크'] = str(minimapcheck)
+    config['capture']['위치체크'] = str(loccheck)
+    config['capture']['룬체크'] = str(runecheck)
+    config['capture']['룬딥러닝'] = str(runedeep)
+    config['script'] = {}
+    config['script']['아두이노 사용'] = str(useardu)
+    config['discord'] = {}
+    config['discord']['봇 사용'] = str(usedisbot)
+    config['discord']['디스코드 토큰'] = distoken
+    config['discord']['디스코드 채널'] = str(channel)
+    config['discord']['디스코드 유저'] = str(user)
+    with open('config.ini', 'w', encoding='utf-8') as configfile:
+        config.write(configfile)
+
+# config 없다면
+if not os.path.isfile("config.ini"):
+    make_config()
+
+# config and 변수 ini
+config = configparser.ConfigParser()
+config.read('config.ini', encoding='utf-8')
+
+cf_main_type = config['main']['시작타입']
+mytype = cf_main_type
+
+cf_capture_lil = config['capture']['캡쳐 주기']
+caplil = round(float(cf_capture_lil), 2)
+
+cf_capture_maplecheck = config['capture']['메이플체크']
+maplecheck = distutils.util.strtobool(cf_capture_maplecheck)
+
+cf_capture_minimapcheck = config['capture']['미니맵체크']
+minimapcheck = distutils.util.strtobool(cf_capture_minimapcheck)
+
+cf_capture_loc = config['capture']['위치체크']
+loccheck = distutils.util.strtobool(cf_capture_loc)
+
+cf_capture_rune = config['capture']['룬체크']
+runecheck = distutils.util.strtobool(cf_capture_rune)
+
+cf_capture_runedeep = config['capture']['룬딥러닝']
+runedeep = distutils.util.strtobool(cf_capture_runedeep)
+
+cf_script_ardu = config['script']['아두이노 사용']
+useardu = distutils.util.strtobool(cf_script_ardu)
+
+cf_discord_bot = config['discord']['봇 사용']
+usedisbot = distutils.util.strtobool(cf_discord_bot)
+
+cf_discord_tokken = config['discord']['디스코드 토큰']
+distoken = cf_discord_tokken
+
+cf_discord_channel = config['discord']['디스코드 채널']
+channel = int(cf_discord_channel)
+
+cf_discord_user = config['discord']['디스코드 유저']
+user = int(cf_discord_user)
+
+global ardu
+ardu = None
+
 global PATH_TO_MODELS
 PATH_TO_MODELS = './RuneAuto/saved_model'
 global model
 model = None
 
-form_class = uic.loadUiType("mainWindow.ui")[0]
-print(cv2.__file__)
-#메이플 x, y , w , h , hwnd
+global screen
+screen = Image.open("./img/rune_ready.jpg")
+
+# 메이플 x, y , w , h , hwnd
 global mapleOn
-mapleOn = 0,0,0,0,0
+mapleOn = 0, 0, 0, 0, 0
 
 # 미니맵 x, y , w, h ,적중률 왼위 오른아래
 global miniMap
-miniMap = 0,0,0,0,0,0
+miniMap = 0, 0, 0, 0, 0, 0
 
 # [0] 내위치 X [1] 내위치 Y
 global stat
@@ -40,34 +152,18 @@ global rune
 rune = 0, 0
 global runetime
 runetime = 0
-# 무한반복 0 은 반복함 1은 반복안함
-global runecheck
-runecheck = 0
-global inficheck
-inficheck = 0
 
-global ardu
-ardu = None
-global screen
-screen = Image.open("./img/rune_ready.jpg")
 global sc
 sc = None
-#디스코드 상태
+# 디스코드 상태
 global disstat
 disstat = 0
-#디스코드 토큰
-global distoken
-distoken = 'MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0'
 
 global bot
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=">", intents=intents)
 
-global channel
-channel = 1006538980956831764
-global user
-user = 324926800805494784
 
 # APPLICATION ID
 # 1006497506978447390
@@ -89,22 +185,12 @@ user = 324926800805494784
 # await channel.send('hello')
 
 
+
+
 @bot.event
 async def on_ready():
-    global model
-    global runecheck
-    print('디코봇 시작')
-    if runecheck == 0:
-        model = tf.saved_model.load(PATH_TO_MODELS)
-        screen = Image.open("./img/rune_ready.jpg")
-        image_array = np.array(screen)
-        with tf.device('/gpu:0'):
-            results = inference_from_model(image_array)
-        print(results)
-        print("딥러닝 준비 완료")
     await bot.change_presence(status=discord.Status.online, activity=discord.Game("재밌는 일"))
     await bt()
-
 
 
 # 받으면 삭제하고 바꾸기
@@ -118,6 +204,7 @@ async def on_message(message):
         await message.delete()
     await bot.process_commands(message)
 
+
 @bot.command()
 async def ping(ctx):
     file = discord.File("temp.png")
@@ -126,15 +213,13 @@ async def ping(ctx):
     await ctx.send(embed=embed, file=file)
 
 
-
-#disstat = 0  중지 1 정상동작중 2 룬찾기 3 알람 4 거탐 5 비올레타
-# 디스코드 모니터 및 딥쁘러닝 쓰레드
+# disstat = 0  중지 1 정상동작중 2 룬찾기 3 알람 4 거탐 5 비올레타
+# 디스코드 모니터
 async def bt():
     global channel
     global user
     channel = bot.get_channel(channel)
     user = await bot.fetch_user(user)
-
 
     await bot.wait_until_ready()
     i = 0
@@ -143,13 +228,13 @@ async def bt():
         # await user.send('우누누우')
         # print("웃우")
         if disstat == 0:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("중지"))
+            await bot.change_presence(status=discord.Status.online, activity=discord.Game("중지"))
         elif disstat == 1:
-            await bot.change_presence(status = discord.Status.online, activity = discord.Game("정상동작"))
+            await bot.change_presence(status=discord.Status.online, activity=discord.Game("정상동작"))
             if i == 600:
                 i = 0
                 await channel.send("정상동작중입니다.")
-            i = i+1
+            i = i + 1
         elif disstat == 2:
             await bot.change_presence(status=discord.Status.online, activity=discord.Game("일시정지"))
         elif disstat == 3:
@@ -163,81 +248,78 @@ async def bt():
 
         await asyncio.sleep(1)
 
-
-
 # 키마 세팅 클래스
 class Keymouse():
     # Mouse basic commands and arguments
-    MOUSE_CMD            = 0xE0
-    MOUSE_CALIBRATE      = 0xE1
-    MOUSE_PRESS          = 0xE2
-    MOUSE_RELEASE        = 0xE3
+    MOUSE_CMD = 0xE0
+    MOUSE_CALIBRATE = 0xE1
+    MOUSE_PRESS = 0xE2
+    MOUSE_RELEASE = 0xE3
 
-    MOUSE_CLICK          = 0xE4
-    MOUSE_FAST_CLICK     = 0xE5
-    MOUSE_MOVE           = 0xE6
-    MOUSE_BEZIER         = 0xE7
+    MOUSE_CLICK = 0xE4
+    MOUSE_FAST_CLICK = 0xE5
+    MOUSE_MOVE = 0xE6
+    MOUSE_BEZIER = 0xE7
 
     # Mouse buttons
-    MOUSE_LEFT           = 0xEA
-    MOUSE_RIGHT          = 0xEB
-    MOUSE_MIDDLE         = 0xEC
-    MOUSE_BUTTONS        = [MOUSE_LEFT,
-                            MOUSE_MIDDLE,
-                            MOUSE_RIGHT]
+    MOUSE_LEFT = 0xEA
+    MOUSE_RIGHT = 0xEB
+    MOUSE_MIDDLE = 0xEC
+    MOUSE_BUTTONS = [MOUSE_LEFT,
+                     MOUSE_MIDDLE,
+                     MOUSE_RIGHT]
 
     # Keyboard commands and arguments
-    KEYBOARD_CMD         = 0xF0
-    KEYBOARD_PRESS       = 0xF1
-    KEYBOARD_RELEASE     = 0xF2
+    KEYBOARD_CMD = 0xF0
+    KEYBOARD_PRESS = 0xF1
+    KEYBOARD_RELEASE = 0xF2
     KEYBOARD_RELEASE_ALL = 0xF3
-    KEYBOARD_PRINT       = 0xF4
-    KEYBOARD_PRINTLN     = 0xF5
-    KEYBOARD_WRITE       = 0xF6
-    KEYBOARD_TYPE        = 0xF7
+    KEYBOARD_PRINT = 0xF4
+    KEYBOARD_PRINTLN = 0xF5
+    KEYBOARD_WRITE = 0xF6
+    KEYBOARD_TYPE = 0xF7
 
     # Arduino keyboard modifiers
     # http://arduino.cc/en/Reference/KeyboardModifiers
-    LEFT_CTRL            = 0x80
-    LEFT_SHIFT           = 0x81
-    LEFT_ALT             = 0x82
-    LEFT_GUI             = 0x83
-    RIGHT_CTRL           = 0x84
-    RIGHT_SHIFT          = 0x85
-    RIGHT_ALT            = 0x86
-    RIGHT_GUI            = 0x87
-    UP_ARROW             = 0xDA
-    DOWN_ARROW           = 0xD9
-    LEFT_ARROW           = 0xD8
-    RIGHT_ARROW          = 0xD7
-    BACKSPACE            = 0xB2
-    TAB                  = 0xB3
-    RETURN               = 0xB0
-    ESC                  = 0xB1
-    INSERT               = 0xD1
-    DELETE               = 0xD4
-    PAGE_UP              = 0xD3
-    PAGE_DOWN            = 0xD6
-    HOME                 = 0xD2
-    END                  = 0xD5
-    CAPS_LOCK            = 0xC1
-    F1                   = 0xC2
-    F2                   = 0xC3
-    F3                   = 0xC4
-    F4                   = 0xC5
-    F5                   = 0xC6
-    F6                   = 0xC7
-    F7                   = 0xC8
-    F8                   = 0xC9
-    F9                   = 0xCA
-    F10                  = 0xCB
-    F11                  = 0xCC
-    F12                  = 0xCD
+    LEFT_CTRL = 0x80
+    LEFT_SHIFT = 0x81
+    LEFT_ALT = 0x82
+    LEFT_GUI = 0x83
+    RIGHT_CTRL = 0x84
+    RIGHT_SHIFT = 0x85
+    RIGHT_ALT = 0x86
+    RIGHT_GUI = 0x87
+    UP_ARROW = 0xDA
+    DOWN_ARROW = 0xD9
+    LEFT_ARROW = 0xD8
+    RIGHT_ARROW = 0xD7
+    BACKSPACE = 0xB2
+    TAB = 0xB3
+    RETURN = 0xB0
+    ESC = 0xB1
+    INSERT = 0xD1
+    DELETE = 0xD4
+    PAGE_UP = 0xD3
+    PAGE_DOWN = 0xD6
+    HOME = 0xD2
+    END = 0xD5
+    CAPS_LOCK = 0xC1
+    F1 = 0xC2
+    F2 = 0xC3
+    F3 = 0xC4
+    F4 = 0xC5
+    F5 = 0xC6
+    F6 = 0xC7
+    F7 = 0xC8
+    F8 = 0xC9
+    F9 = 0xCA
+    F10 = 0xCB
+    F11 = 0xCC
+    F12 = 0xCD
 
     # etc.
-    SCREEN_CALIBRATE     = 0xFF
-    COMMAND_COMPLETE     = 0xFE
-
+    SCREEN_CALIBRATE = 0xFF
+    COMMAND_COMPLETE = 0xFE
 
 
 # 아두이노 제어 클래스
@@ -405,7 +487,7 @@ class Arduino(object):
 
     def move(self, dest_x, dest_y):
         if not isinstance(dest_x, (int, float)) and not isinstance(
-            dest_y, (int, float)
+                dest_y, (int, float)
         ):
             raise ValueError(
                 "Invalid mouse coordinates. " + "Must be type `int` or `float`."
@@ -420,7 +502,7 @@ class Arduino(object):
 
     def bezier_move(self, dest_x, dest_y):
         if not isinstance(dest_x, (int, float)) and not isinstance(
-            dest_y, (int, float)
+                dest_y, (int, float)
         ):
             raise ValueError(
                 "Invalid mouse coordinates. " + "Must be `int` or `float`."
@@ -512,11 +594,13 @@ class Capture:
 
     def miniMap(self, img):
         img = img.crop((0, 0, 400, 400))
-        res_pos1 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniLU, cv2.TM_CCORR_NORMED, mask=Capture.MiniLU_mask)
+        res_pos1 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniLU,
+                                     cv2.TM_CCORR_NORMED, mask=Capture.MiniLU_mask)
         con_pos1 = res_pos1.max()
         loc_pos1 = np.where(res_pos1 == con_pos1)
 
-        res_pos2 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniRD, cv2.TM_CCORR_NORMED, mask=Capture.MiniRD_mask)
+        res_pos2 = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MiniRD,
+                                     cv2.TM_CCORR_NORMED, mask=Capture.MiniRD_mask)
         con_pos2 = res_pos2.max()
         loc_pos2 = np.where(res_pos2 == con_pos2)
         # img.save("./img/tempmini.png")
@@ -525,10 +609,10 @@ class Capture:
         else:
             return 0, 0, 0, 0, con_pos1, con_pos2
 
-
     def myPosition(self, img):
         try:
-            res_mypos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MyPos_templ, cv2.TM_SQDIFF_NORMED, mask=Capture.MyPos_templ_mask)
+            res_mypos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.MyPos_templ,
+                                          cv2.TM_SQDIFF_NORMED, mask=Capture.MyPos_templ_mask)
             minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(res_mypos)
             con_runepos = minVal
             loc_runepos = minLoc
@@ -541,7 +625,8 @@ class Capture:
 
     def runePosition(self, img):
         try:
-            res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.Rune_templ, cv2.TM_SQDIFF_NORMED, mask=Capture.Rune_templ_mask)
+            res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Capture.Rune_templ,
+                                            cv2.TM_SQDIFF_NORMED, mask=Capture.Rune_templ_mask)
             minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(res_runepos)
             con_runepos = minVal
             loc_runepos = minLoc
@@ -553,9 +638,6 @@ class Capture:
                 return 0, 0
         except:
             return 0, 0
-
-
-
 
 
 ## 룬딥쁘러닝
@@ -584,8 +666,6 @@ def inference_from_model(image, threshold=None):
     return detect_class[np.argsort(detect_coord[:, 1])[::-1]]
 
 
-
-
 # 메인 윈도우 클래스
 class MyWindow(QMainWindow, form_class):
 
@@ -594,46 +674,97 @@ class MyWindow(QMainWindow, form_class):
         self.scriptworker = None
         self.captureworker = None
         self.discordworker = None
-        self.miniMap = None
-        self.mapleOn = None
         self.firstMacro = True
         self.isRun = False
         self.setupUi(self)
+        # 설정 매핑
+        if maplecheck:
+            self.checkBoxMaple.toggle()
+        if minimapcheck:
+            self.checkBoxMinimap.toggle()
+        if loccheck:
+            self.checkBoxLoc.toggle()
+        if runecheck:
+            self.checkBoxRune.toggle()
+        if runedeep:
+            self.checkBoxRunedeep.toggle()
+        if useardu:
+            self.checkBoxArdu.toggle()
+        if usedisbot:
+            self.checkBoxBot.toggle()
+
         # 버튼 매핑
         self.mainBtn1.clicked.connect(self.onStartClicked)  # 시작
         self.mainBtn2.clicked.connect(self.onStopClicked)  # 중지
         self.mainBtn3.clicked.connect(self.onReloadClicked)  # 불러오기
+        self.settingBtn.clicked.connect(self.onSettingClicked)  # 룬찾기
         self.mainBtn4.clicked.connect(self.onRuneClicked)  # 룬찾기
         self.testBtn1.clicked.connect(self.onTest1Clicked)  # test1
         self.testBtn2.clicked.connect(self.onTest2Clicked)  # test2
         self.testBtn3.clicked.connect(self.onTest3Clicked)  # test3
-        self.checkBox1.stateChanged.connect(self.chkFunction)  # 무한반복
-        self.checkBox2.stateChanged.connect(self.chkFunction)  # 룬체크(딥러닝안함)
+        self.checkBoxLoc.stateChanged.connect(self.chkFunction)  # 위치체크
+        self.checkBoxRune.stateChanged.connect(self.chkFunction)  # 룬체크
+        self.checkBoxRunedeep.stateChanged.connect(self.chkFunction) #룬딥러닝
+        self.checkBoxArdu.stateChanged.connect(self.chkFunction) # 아두이노체크
+        self.checkBoxBot.stateChanged.connect(self.chkFunction)  # 디코봇체크
+        self.doubleSpinBoxLil.valueChanged.connect(self.lil_changed) # 캡쳐주기 변경
+        self.discordTokken.setText(str(distoken))
+        self.discordTokken.textChanged.connect(self.tokken_changed)
+        self.discordChannel.setText(str(channel))
+        self.discordChannel.textChanged.connect(self.channel_changed)
+        self.discordUser.setText(str(user))
+        self.discordUser.textChanged.connect(self.user_changed)
+
+
+
+        # 콤보박스
+        self.comboBox.addItem("기본동작모드")
+        self.comboBox.addItem("스크립트제작")
+        self.comboBox.addItem("test1")
+        self.comboBox.addItem("test2")
+        self.comboBox.addItem("test3")
+        self.comboBox.addItem("test4")
+        # 콤보박스 기본 선택
+        for v in range(1, self.comboBox.count()):
+            if self.comboBox.itemText(v) == mytype:
+                self.comboBox.setCurrentIndex(v)
+        self.comboBox.currentIndexChanged.connect(self.comboBoxFunction)  # 콤보박스 펑션
+
+
+
 
     def onStartClicked(self):
-        # print("start 버튼")
-        self.textInputTB1("시작합니다.")
+        global disstat
+        if disstat == 0 or disstat == 2:
+            disstat = 1
+            self.label_status.setText("정상동작중")
+            self.label_status.setStyleSheet(
+                "color: #41E881; border-style: solid; border-width: 2px; border-color: #67E841; border-radius: 10px; ")
         self.startMacro()
 
     def onStopClicked(self):
         global disstat
         # print("stop 버튼")
+        self.textInputTB1("중지합니다.")
         try:
             self.captureworker.pause()
         except:
-            print("매크로가 실행중이지 않습니다.")
+            self.textInputTB1("캡쳐 쓰레드가 실행중이지 않습니다.")
         try:
             self.scriptworker.pause()
         except:
-            print("매크로가 실행중이지 않습니다.")
+            self.textInputTB1("스크립트 쓰레드가 실행중이지 않습니다.")
         try:
             self.discordworker.pause()
         except:
-            print("매크로가 실행중이지 않습니다.")
-            return
+            self.textInputTB1("디스코드 쓰레드가 실행중이지 않습니다.")
+            # return
         self.isRun = False
         disstat = 2
-        self.textInputTB1("중지합니다.")
+        self.label_status.setText("일시정지")
+        self.label_status.setStyleSheet(
+            "color: #FF5733; border-style: solid; border-width: 2px; border-color: #FFC300; border-radius: 10px; ")
+
 
     def onReloadClicked(self):
         global disstat
@@ -656,15 +787,29 @@ class MyWindow(QMainWindow, form_class):
         self.textInputTB1(f'{sc} script load.')
         self.textInputTB1(f'{self.helo}')
 
+    def onSettingClicked(self):
+        make_config()
+        QMessageBox.about(self, '저장완료', '세팅이 성공적으로 저장되었습니다.')
+
     def onRuneClicked(self):
         global mapleOn
         global screen
+        global model
         image_array = np.array(screen)
-        with tf.device('/gpu:0'):
-            results = inference_from_model(image_array)
-        rune_screen = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(f'./img/rune/{int(time.time())}.jpg', rune_screen)
-        print(results)
+        if model == None:
+            self.textInputTB1("딥러닝 모델 불러오는 중.")
+            model = tf.saved_model.load(PATH_TO_MODELS)
+            with tf.device('/gpu:0'):
+                results = inference_from_model(image_array)
+            rune_screen = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(f'./img/rune/{int(time.time())}.jpg', rune_screen)
+            self.textInputTB1(str(results))
+        else:
+            with tf.device('/gpu:0'):
+                results = inference_from_model(image_array)
+            rune_screen = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(f'./img/rune/{int(time.time())}.jpg', rune_screen)
+            self.textInputTB1(str(results))
 
     def onTest1Clicked(self):
         print("test1 시작")
@@ -673,28 +818,63 @@ class MyWindow(QMainWindow, form_class):
         ardu = Arduino()
         time.sleep(1)
         print(f"test1 종료 걸린시간 = {time.time() - self.time}")
+
     def onTest2Clicked(self):
         global ardu
         print("test2 시작")
         self.time = time.time()
-        r = (149,20)
-        gotorune(r)
-
-
+        gotohunt(self.time)
         print(f"test2 종료 걸린시간 = {time.time() - self.time}")
+
     def onTest3Clicked(self):
-        global ardu
-        print("test3")
-        ardu.release_all()
+        self.progressBar.setValue(100)
+
     def chkFunction(self):
+        global maplecheck
+        global minimapcheck
+        global loccheck
         global runecheck
-        global inficheck
-        # 무한반복
-        if self.checkBox1.isChecked(): print("무한반복안함"); inficheck = 1
-        if not self.checkBox1.isChecked(): print("무한반복함"); inficheck = 0
+        global runedeep
+        global useardu
+        global usedisbot
+        # 메이플체크
+        if self.checkBoxMaple.isChecked(): maplecheck = True
+        if not self.checkBoxMaple.isChecked(): maplecheck = False
+        # 미니맵체크
+        if self.checkBoxMinimap.isChecked(): minimapcheck = True
+        if not self.checkBoxMinimap.isChecked(): minimapcheck = False
+        # 위치체크
+        if self.checkBoxLoc.isChecked(): loccheck = True
+        if not self.checkBoxLoc.isChecked(): loccheck = False
         # 룬체크
-        if self.checkBox2.isChecked(): print("룬체크안함"); runecheck = 1
-        if not self.checkBox2.isChecked(): print("룬체크함"); runecheck = 0
+        if self.checkBoxRune.isChecked(): runecheck = True
+        if not self.checkBoxRune.isChecked(): runecheck = False
+        # 룬딥러닝체크
+        if self.checkBoxRunedeep.isChecked(): runedeep = True
+        if not self.checkBoxRunedeep.isChecked(): runedeep = False
+        # 아두이노 체크
+        if self.checkBoxArdu.isChecked(): useardu = True
+        if not self.checkBoxArdu.isChecked(): useardu = False
+        # 디코봇체크
+        if self.checkBoxBot.isChecked(): usedisbot = True
+        if not self.checkBoxBot.isChecked(): usedisbot = False
+
+    def lil_changed(self):
+        global caplil
+        caplil = round(self.doubleSpinBoxLil.value(), 2)
+
+    def tokken_changed(self):
+        global distoken
+        distoken = self.discordTokken.text()
+    def channel_changed(self):
+        global channel
+        channel = int(self.discordChannel.text())
+    def user_changed(self):
+        global user
+        user = int(self.discordUser.text())
+    def comboBoxFunction(self):
+        global mytype
+        mytype = self.comboBox.currentText()
 
     # 텍스트 넣어주기 tI
     @pyqtSlot(str)
@@ -704,85 +884,129 @@ class MyWindow(QMainWindow, form_class):
         scrollbar = self.mainTB1.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
+    # myloc runeloc 실시간 변경
+    @pyqtSlot(str, str)
+    def textInputLabel(self, lo, txt):
+        # print("텍스트 넣어주기 함수")
+        if lo == "myloc":
+            self.label_myloc.setText(txt)
+        elif lo == "runeloc":
+            self.label_runeloc.setText(txt)
+    @pyqtSlot(int)
+    def deepprogress(self, val):
+        self.progressBar.setValue(val)
+
     ### 기본 시작 매크로###
     def startMacro(self):
         global mapleOn
         global miniMap
         global ardu
-        if self.isRun: print("이미 실행중입니다."); return
-        self.isRun = True
-        # 첫 시작눌렀을때 아두이노 세팅
-        if self.firstMacro:
-            print("아두이노 확인")
-            try:
-                ardu = Arduino()
-                print("아두이노 확인 완료")
-                self.firstMacro = False
-            except:
-                print("아두이노 연결이 확인되지 않습니다")
-                print("중지합니다.")
-                self.isRun = False
-                return
-        # 두번째 시작을 눌렀을때
+        global model
+        if self.isRun: self.textInputTB1("이미 실행중입니다."); return
         else:
-            try:
-                print("아두이노 마우스 체크중 건들 ㄴㄴ")
-                ardu.release_all()
-                print("아두이노 연결 확인 완료")
-            except:
-                try:
-                    ardu = Arduino()
-                    print("아두이노 재연결 완료")
-                    self.firstMacro = False
-                except:
-                    print("아두이노 연결이 확인되지 않습니다")
-                    print("중지합니다.")
+            self.textInputTB1("시작합니다.")
+            self.isRun = True
+            #아두이노 사용 한다면
+            if useardu:
+                # 첫 시작눌렀을때 아두이노 세팅
+                if self.firstMacro:
+                    self.textInputTB1("아두이노 연결중")
+                    try:
+                        ardu = Arduino()
+                        self.textInputTB1("아두이노 연결완료")
+                        self.firstMacro = False
+                    except:
+                        self.textInputTB1("아두이노 연결 안됨")
+                        self.textInputTB1("중지합니다.")
+                        self.isRun = False
+                        return
+                # 두번째 시작을 눌렀을때
+                else:
+                    try:
+                        self.textInputTB1("아두이노 연결 체크중")
+                        ardu.release_all()
+                        self.textInputTB1("아두이노 연결 완료")
+                    except:
+                        try:
+                            ardu = Arduino()
+                            self.textInputTB1("아두이노 재연결 완료")
+                            self.firstMacro = False
+                        except:
+                            self.textInputTB1("아두이노 연결 안됨")
+                            self.textInputTB1("중지합니다.")
+                            self.isRun = False
+                            return
+            if maplecheck:
+                self.textInputTB1("메이플 프로세스 확인")
+                mapleOn = Capture.mapleOn(self)
+                if mapleOn[4] == 0:
+                    self.textInputTB1("메이플 확인 안됨")
+                    self.textInputTB1("중지합니다.")
                     self.isRun = False
                     return
+                # 메이플 최상위
+                win32gui.SetForegroundWindow(mapleOn[4])
+                bbox = mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3]
+                self.label_mapleOn.setText(str(bbox))
+                self.label_process.setText(str(mapleOn[4]))
+                if minimapcheck:
+                    self.textInputTB1("메이플 미니맵 확인")
+                    screen = ImageGrab.grab(bbox)
+                    # 시작 찰칵찰칵이
+                    screen.save("./img/temp.png")
+                    miniMap = Capture.miniMap(self, screen)
+                    if miniMap[3] == 0:
+                        self.textInputTB1("미니맵 인식안됨")
+                        self.textInputTB1("중지합니다.")
+                        self.isRun = False
+                        return
+                    bboxmini = miniMap[0], miniMap[1], miniMap[2], miniMap[3]
+                    minisize = miniMap[2] - miniMap[0], miniMap[3] - miniMap[1]
+                    self.label_minimap.setText(str(bboxmini))
+                    self.label_minimapsize.setText(str(minisize))
+                    infobox = 4, 15, 294, 65
+                    infoimg = screen.crop(infobox)
+                    infoimg.save("./img/mapinfo.png")
+                    pixmap = QPixmap("./img/mapinfo.png")
+                    self.label_imgmapinfo.setPixmap(pixmap)
 
-        print("메이플 프로세스확인")
-        mapleOn = Capture.mapleOn(self)
-        if mapleOn[4] == 0:
-            print("메이플 확인 안됨")
-            print("중지합니다.")
-            self.isRun = False
-            return
-        print(mapleOn)
-        print("메이플 미니맵 확인")
-        bbox = (mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3])
-        screen = ImageGrab.grab(bbox)
-        # 시작 찰칵찰칵이
-        screen.save("./img/temp.png")
-        miniMap = Capture.miniMap(self, screen)
+            self.textInputTB1("캡쳐 쓰레드 시작")
+            self.captureworker = CaptureWorker()
+            self.captureworker.start()
+            self.captureworker.textInputTB1.connect(self.textInputTB1)
+            self.captureworker.textInputLabel.connect(self.textInputLabel)
 
-        print(miniMap)
-        if miniMap[3] == 0:
-            print("미니맵 인식안됨")
-            print("중지합니다.")
-            self.isRun = False
-            return
+            self.textInputTB1("스크립트 쓰레드 시작")
+            self.scriptworker = ScriptWorker()
+            self.scriptworker.start()
+            self.scriptworker.textInputTB1.connect(self.textInputTB1)
+            self.scriptworker.deepprogress.connect(self.deepprogress)
 
+            if not mytype == "스크립트제작":
+                if usedisbot:
+                    self.textInputTB1("디스코드 쓰레드 시작")
+                    self.discordworker = DiscordWorker()
+                    self.discordworker.start()
+                    # self.discordworker.textInputTB1.connect(self.textInputTB1)
 
+    def closeEvent(self, event):
+        quit_msg = "종료하시겠습니까??"
+        reply = QMessageBox.question(self, '매크로 종료', quit_msg, QMessageBox.Yes, QMessageBox.No)
 
-        # print("딥러닝체크")
-        print("캡쳐 쓰레드 시작")
-        self.captureworker = CaptureWorker()
-        self.captureworker.start()
-        self.captureworker.textInputTB1.connect(self.textInputTB1)
-
-        print("스크립트 쓰레드 시작")
-        self.scriptworker = ScriptWorker()
-        self.scriptworker.start()
-        self.scriptworker.textInputTB1.connect(self.textInputTB1)
-        print("디스코드 딥러닝 쓰레드 시작")
-        self.discordworker = DiscordWorker()
-        self.discordworker.start()
-        #self.discordworker.textInputTB1.connect(self.textInputTB1)
+        if reply == QMessageBox.Yes:
+            try:
+                ardu.release_all()
+                event.accept()
+            except:
+                event.accept()
+        else:
+            event.ignore()
 
 
 # 캡쳐쓰레드
 class CaptureWorker(QThread):
     textInputTB1 = pyqtSignal(str)
+    textInputLabel = pyqtSignal(str, str)
 
     def __init__(self):
         super().__init__()
@@ -795,33 +1019,41 @@ class CaptureWorker(QThread):
         global disstat
         self.bbox = (mapleOn[0], mapleOn[1], mapleOn[2], mapleOn[3])
         self.bboxMini = (miniMap[0], miniMap[1], miniMap[2], miniMap[3])
+
         def myloce():
             global stat
             global rune
             global disstat
             global runetime
             global screen
-            screen = ImageGrab.grab(self.bbox)
-            # 내위치 찾기
-            crop_img = screen.crop(self.bboxMini)
-            stat = Capture.myPosition(self, crop_img)
-            self.textInputTB1.emit("내위치 " + str(stat[0]) + str(stat[1]))
-            #약 5초마다 반복 룬찾기 및 내위치
-            if self.capturei == 30:
-                self.capturei = 0
-                if runecheck == 0:
-                    self.runet = time.time()
-                    if self.runet-runetime > 900:
-                        rune = Capture.runePosition(self, crop_img)
-                        if not rune[1] == 0:
-                            disstat = 3
-                            self.textInputTB1.emit("룬출현 " + str(rune[0]) + str(rune[1]))
-            self.capturei += 1
+            if loccheck:
+                screen = ImageGrab.grab(self.bbox)
+                # 내위치 찾기
+                crop_img = screen.crop(self.bboxMini)
+                stat = Capture.myPosition(self, crop_img)
+                self.textInputLabel.emit("myloc", str(stat))
+                # 약 5초마다 반복 룬찾기 및 내위치
+                if self.capturei == 30:
+                    self.capturei = 0
+                    if not mytype == "스크립트제작":
+                        if runecheck:
+                            self.runet = time.time()
+                            if self.runet - runetime > 900:
+                                rune = Capture.runePosition(self, crop_img)
+                                if not rune[1] == 0:
+                                    disstat = 3
+                                    # self.label_status.emit("룬 찾는중")
+                                    # self.label_status.setStyleSheet(
+                                    #     "color: #4D69E8; border-style: solid; border-width: 2px; border-color: #54A0FF; border-radius: 10px; ")
+                                    self.textInputTB1.emit("룬출현")
+                                    self.textInputLabel.emit("runeloc", str(rune))
+                self.capturei += 1
+
         # job1 내위치 0.1초마다
-        job1 = schedule.every(0.1).seconds.do(myloce)
+        job1 = schedule.every(caplil).seconds.do(myloce)
         while self.running:
             schedule.run_pending()
-            time.sleep(0.1)
+            time.sleep(caplil)
         else:
             schedule.cancel_job(job1)
 
@@ -830,104 +1062,112 @@ class CaptureWorker(QThread):
 
     def pause(self):
         self.running = False
-        print("캡쳐 쓰레드 중지")
 
 
 # 스크립트 쓰레드
 class ScriptWorker(QThread):
     textInputTB1 = pyqtSignal(str)
+    deepprogress = pyqtSignal(int)
     global stat
     global rune
 
-
     def __init__(self):
-
         super().__init__()
-        self.runestack = None
         self.starttime = 0
         self.scripti = None
         self.running = True
 
-    def 빠른이동(self):
-        print("빠른이동")
-    def 일반이동(self):
-        print("일반이동")
-
     def run(self):
-        self.hunttime = time.time()
-        self.runeloce = 0, 0
-        self.runestack = 0
         global disstat
         global ardu
         global runetime
-        global model
         global sc
-        global mapleOn
         global screen
         global stat
-        i = 0
+        global model
+        if not mytype == "스크립트제작":
+            if runedeep:
+                self.textInputTB1.emit("딥러닝 체크")
+                self.deepprogress.emit(10)
+                model = tf.saved_model.load(PATH_TO_MODELS)
+                self.deepprogress.emit(30)
+                screen = Image.open("./img/rune_ready.jpg")
+                self.deepprogress.emit(40)
+                image_array = np.array(screen)
+                self.deepprogress.emit(50)
+                try:
+                    with tf.device('/gpu:0'):
+                        results = inference_from_model(image_array)
+                    self.deepprogress.emit(100)
+                    print(results)
+                    self.textInputTB1.emit("딥러닝 준비 완료")
+                except:
+                    self.textInputTB1.emit("딥러닝 고장")
+                    self.deepprogress.emit(0)
+        self.hunttime = time.time()
+        self.runeloce = 0, 0
+        self.scripti = 0
         while self.running:
             if not sc == None:
-                #if 룬
-                if disstat == 3:
-                    # 룬로케로 룬위치 설정
-                    if self.runeloce[0] == 0:
-                        if not rune[1] == 0:
-                            self.starttime = time.time()
-                            self.runeloce = rune
-                    # 룬위치 설정이 되었다면
-                    # gotorune(self.runeloce)
-                    # 룬 완료시
-                    if 0 <= abs(stat[0] - self.runeloce[0]) < 3 and 0 <= abs(stat[1] - self.runeloce[1]) < 2:
-                        print("룬 해제 3")
-                        time.sleep(1)
-                        print("룬 해제 2")
-                        time.sleep(1)
-                        print("룬 해제 1")
-                        time.sleep(1)
-                        print("룬 해제")
-                        #딥쁘러닝
-                        image_array = np.array(screen)
-                        with tf.device('/gpu:0'):
-                            results = inference_from_model(image_array)
-                        rune_screen = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
-                        cv2.imwrite(f'./img/rune/{int(time.time())}.jpg', rune_screen)
-                        print(results)
-                        #결과 완료면
-                        # 디스스텟 동작중변경
-                        disstat = 1
-                        #룬시간 초기화
-                        runetime = time.time()
-                        #룬위치 초기화
-                        self.runeloce = 0, 0
-                        print(f"룬까는데 걸린 시간 = {runetime - self.starttime}")
-                        #사냥시간 초기화
-                        self.hunttime = time.time()
+                # if 룬
+                if mytype == "스크립트제작":
+                    gotohunt(self.hunttime)
                 else:
-                    #내위치
-                    # print("내위치")
-                    # print(stat)
-                    gotohunt(stat,self.hunttime)
+                    # 만약 룬
+                    if disstat == 3:
+                        # 룬로케로 룬위치 설정
+                        if self.runeloce[0] == 0:
+                            if not rune[1] == 0:
+                                self.starttime = time.time()
+                                self.runeloce = rune
+                        # 룬위치 설정이 되었다면
+                        # gotorune(self.runeloce)
+                        # 룬 완료시
+                        if 0 <= abs(stat[0] - self.runeloce[0]) < 3 and 0 <= abs(stat[1] - self.runeloce[1]) < 2:
+                            print("룬 해제 3")
+                            time.sleep(1)
+                            print("룬 해제 2")
+                            time.sleep(1)
+                            print("룬 해제 1")
+                            time.sleep(1)
+                            print("룬 해제")
+                            # 딥쁘러닝
+                            if runedeep:
+                                image_array = np.array(screen)
+                                with tf.device('/gpu:0'):
+                                    results = inference_from_model(image_array)
+                                rune_screen = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+                                cv2.imwrite(f'./img/rune/{int(time.time())}.jpg', rune_screen)
+                                print(results)
+                            # 결과 완료면
+                            # 디스스텟 동작중변경
+                            disstat = 1
+                            # self.label_status.setText("정상동작중")
+                            # self.label_status.setStyleSheet(
+                            #     "color: #41E881; border-style: solid; border-width: 2px; border-color: #67E841; border-radius: 10px; ")
+                            # 룬시간 초기화
+                            runetime = time.time()
+                            # 룬위치 초기화
+                            self.runeloce = 0, 0
+                            print(f"룬까는데 걸린 시간 = {runetime - self.starttime}")
+                            # 사냥시간 초기화
+                            self.hunttime = time.time()
+                    else:
+                        gotohunt(self.hunttime)
             else:
                 print("스크립트가 없습니다.")
                 time.sleep(1)
-
-
-
-
 
     def resume(self):
         self.running = True
 
     def pause(self):
         self.running = False
-        print("스크립트 쓰레드 중지")
-
+        ardu.release_all()
 
 # 디스코드 쓰레드
 class DiscordWorker(QThread):
     global distoken
-    global disstat
     global bot
 
     def __init__(self):
@@ -935,21 +1175,13 @@ class DiscordWorker(QThread):
         self.running = True
 
     def run(self):
-        global disstat
-        if disstat == 0:
-            disstat = 1
-            bot.run(distoken)
-
+        bot.run(distoken)
 
     def resume(self):
         self.running = True
 
     def pause(self):
         self.running = False
-        print("디스코드 쓰레드 중지")
-
-
-
 
 
 if __name__ == "__main__":
@@ -957,9 +1189,3 @@ if __name__ == "__main__":
     myWindow = MyWindow()
     myWindow.show()
     app.exec_()
-
-
-
-
-
-

@@ -42,8 +42,11 @@ https://www.arduino.cc/en/software
 # Reference
 
 **pycord to use the discordBot**
+
 https://docs.pycord.dev/en/master/#getting-started
+
  **Arduino keyboard modifiers**
+ 
 https://www.arduino.cc/reference/en/language/functions/usb/keyboard/keyboardmodifiers
 
 # How to use

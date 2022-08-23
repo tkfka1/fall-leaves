@@ -49,6 +49,10 @@ https://docs.pycord.dev/en/master/#getting-started
  
 https://www.arduino.cc/reference/en/language/functions/usb/keyboard/keyboardmodifiers
 
+**keyboard test**
+
+https://funkeys.co.kr/bbs/page.php?hid=keytest
+
 # How to use
 
 that`s simple
@@ -66,8 +70,7 @@ that`s simple
 ## Basic
 
 Start with information
-keyboard test
-https://funkeys.co.kr/bbs/page.php?hid=keytest
+
 
 ## Set
 

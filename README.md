@@ -66,6 +66,8 @@ that`s simple
 ## Basic
 
 Start with information
+keyboard test
+https://funkeys.co.kr/bbs/page.php?hid=keytest
 
 ## Set
 

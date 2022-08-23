@@ -33,22 +33,21 @@ def bezier_move(x,y):
 def write(x):
     ardu.write(x)
 
-# 0~0.1 rand
+# 0.001초~ rand ms변환
 def randtime(x):
-    if x == 1:
-        time.sleep(random.uniform(0, 0.1))
-    elif x == 2:
-        time.sleep(random.uniform(0, 0.2))
-    elif x == 3:
-        time.sleep(random.uniform(0, 0.3))
-    elif x == 4:
-        time.sleep(random.uniform(0, 0.4))
-    else:
-        time.sleep(random.uniform(0, x))
+    x = x/1000
+    time.sleep(random.uniform(0.001, x))
+
+# 0.001초 ms변환
+def slepptime(x):
+    x = x/1000
+    time.sleep(x)
+
 def 텔텔공():
     ## 텔텔공 6가지방법
-    r = random.randrange(1,6)
+    r = random.randrange(1,9)
     if r == 1:
+        print("1")
         pre('z')
         time.sleep(0.1)
         randtime(1)
@@ -61,6 +60,7 @@ def 텔텔공():
         rel(LEFT_CTRL)
         randtime(1)
     elif r == 2:
+        print("2")
         pre('z')
         time.sleep(0.2)
         randtime(1)
@@ -74,6 +74,7 @@ def 텔텔공():
         rel(LEFT_CTRL)
         randtime(1)
     elif r == 3:
+        print("3")
         pre('z')
         time.sleep(0.1)
         randtime(2)
@@ -88,6 +89,7 @@ def 텔텔공():
         rel(LEFT_CTRL)
         randtime(1)
     elif r == 4:
+        print("4")
         randtime(1)
         pre(LEFT_CTRL)
         time.sleep(0.1)
@@ -103,6 +105,7 @@ def 텔텔공():
         rel(LEFT_CTRL)
         randtime(2)
     elif r == 5:
+        print("5")
         randtime(1)
         pre(LEFT_CTRL)
         time.sleep(0.5)
@@ -117,7 +120,49 @@ def 텔텔공():
         time.sleep(0.2)
         randtime(1)
         rel('z')
+    elif r == 6:
+        print("6")
+        randtime(1)
+        randtime(1)
+        randtime(2)
+        pre('z')
+        time.sleep(0.1)
+        randtime(1)
+        pre(LEFT_CTRL)
+        time.sleep(0.1)
+        randtime(1)
+        randtime(2)
+        rel(LEFT_CTRL)
+        time.sleep(0.2)
+        randtime(1)
+        time.sleep(0.1)
+        randtime(1)
+        time.sleep(0.1)
+        randtime(1)
+        randtime(2)
+        time.sleep(0.2)
+        randtime(1)
+        rel('z')
+    elif r == 7:
+        print("7")
+        randtime(1)
+        randtime(1)
+        pre('z')
+        time.sleep(0.1)
+        randtime(1)
+        pre(LEFT_CTRL)
+        time.sleep(0.1)
+        randtime(2)
+        rel(LEFT_CTRL)
+        time.sleep(0.2)
+        randtime(1)
+        time.sleep(0.1)
+        randtime(2)
+        time.sleep(0.2)
+        randtime(1)
+        rel('z')
     else:
+        print("8")
         pre('z')
         time.sleep(0.2)
         randtime(1)
@@ -262,6 +307,35 @@ def 윗점():
         rel('c')
         time.sleep(2)
         randtime(3)
+
+def 한칸텔텔공():
+    print("한칸텔텔공격")
+    randtime(50)
+    pre(LEFT_CTRL)
+    randtime(10)
+    pre('z')
+    randtime(50)
+    slepptime(200)
+    randtime(50)
+    rel(LEFT_CTRL)
+    slepptime(200)
+    randtime(50)
+    rel('z')
+    slepptime(100)
+def 두칸텔텔공():
+    print("두칸")
+    randtime(50)
+    pre(LEFT_CTRL)
+    randtime(10)
+    pre('z')
+    randtime(150)
+    rel(LEFT_CTRL)
+    slepptime(300)
+    randtime(50)
+    slepptime(300)
+    randtime(50)
+    rel('z')
+    slepptime(300)
 
 
 MOUSE_CMD            = 0xE0
@@ -506,33 +580,61 @@ def gotohunt(hunttime):
         t4 = timer4 - hunttime
         ti = time.time() - hunttime
         print(ti)
-        ran = random.randrange(1,100)
-        print(ran)
-        if ran == 100:
+        ran = random.randrange(1,1001)
+        if ran == 1000:
             print("병신짓")
+        elif 911 > ran > 900:
+            pre('q')
+            randtime(10)
+            rel('q')
+            randtime(10)
+        elif 921 > ran > 910:
+            pre('d')
+            randtime(10)
+            rel('d')
+            randtime(10)
+        elif 926 > ran > 920:
+            pre('0')
+            randtime(10)
+            rel('0')
+            randtime(10)
         else:
             #동윗깊 위치
             # 만약 위치
             if y < 25:
-                if x > 196:
+                if x > 192:
                     print("왼쪽")
                     rel(RIGHT_ARROW)
-                    randtime(1)
+                    randtime(10)
                     pre(LEFT_ARROW)
-                    randtime(1)
-                elif x < 35:
+                    randtime(10)
+                elif x < 38:
                     print("오른쪽")
                     rel(LEFT_ARROW)
-                    randtime(1)
+                    randtime(10)
                     pre(RIGHT_ARROW)
-                    randtime(1)
-                randtime(1)
-                텔텔공()
+                    randtime(10)
+                if 55 > x or x > 185:
+                    한칸텔텔공()
+                else:
+                    두칸텔텔공()
             else:
-                randtime(1)
-                윗점()
-                time.sleep(2)
-            randtime(1)
+                randtime(400)
+                print("공격아랫")
+                pre(LEFT_CTRL)
+                randtime(100)
+                pre('z')
+                randtime(100)
+                randtime(400)
+                randtime(100)
+                randtime(400)
+                rel(LEFT_CTRL)
+                randtime(100)
+                randtime(400)
+                randtime(400)
+                rel('z')
+                randtime(100)
+
 
 
 

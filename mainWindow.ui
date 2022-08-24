@@ -94,7 +94,7 @@
      </font>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>2</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -650,6 +650,25 @@
       </property>
       <property name="text">
        <string>미니맵체크</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkBoxLd">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>246</y>
+        <width>137</width>
+        <height>28</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>Yu Gothic UI</family>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>거탐체크</string>
       </property>
      </widget>
     </widget>

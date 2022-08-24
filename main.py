@@ -30,6 +30,7 @@ global minimapcheck
 global loccheck
 global runecheck
 global runedeep
+global ldcheck
 global useardu
 global usedisbot
 global distoken
@@ -42,6 +43,7 @@ minimapcheck = False
 loccheck = False
 runecheck = False
 runedeep = False
+ldcheck = False
 useardu = False
 usedisbot = False
 distoken = ""
@@ -55,6 +57,7 @@ def make_config():
     global loccheck
     global runecheck
     global runedeep
+    global ldcheck
     global useardu
     global usedisbot
     global distoken
@@ -71,6 +74,7 @@ def make_config():
     config['capture']['위치체크'] = str(loccheck)
     config['capture']['룬체크'] = str(runecheck)
     config['capture']['룬딥러닝'] = str(runedeep)
+    config['capture']['거탐체크'] = str(ldcheck)
     config['script'] = {}
     config['script']['아두이노 사용'] = str(useardu)
     config['discord'] = {}
@@ -109,6 +113,9 @@ runecheck = distutils.util.strtobool(cf_capture_rune)
 
 cf_capture_runedeep = config['capture']['룬딥러닝']
 runedeep = distutils.util.strtobool(cf_capture_runedeep)
+
+cf_capture_ld = config['capture']['거탐체크']
+ldcheck = distutils.util.strtobool(cf_capture_ld)
 
 cf_script_ardu = config['script']['아두이노 사용']
 useardu = distutils.util.strtobool(cf_script_ardu)
@@ -645,26 +652,47 @@ def inference_from_model(image, threshold=None):
     global model
     img = image.copy()
     input_tensor = tf.convert_to_tensor(img)
-    input_tensor = input_tensor[tf.newaxis, ...]
+    input_tensor = input_tensor[tf.newaxis,...]
     model_fn = model.signatures['serving_default']
     output_dict = model_fn(input_tensor)
     num_detections = int(output_dict.pop('num_detections'))
-    output_dict = {key: value[0, :num_detections].numpy()
-                   for key, value in output_dict.items()}
+    output_dict = {key:value[0, :num_detections].numpy()
+                    for key,value in output_dict.items()}
     output_dict['num_detections'] = num_detections
     output_dict['detection_classes'] = output_dict['detection_classes'].astype(np.int64)
     if threshold is not None:
         detect_class = np.array([value for index, value in enumerate(output_dict['detection_classes'])
-                                 if output_dict['detection_scores'][index] > threshold])
+                                    if output_dict['detection_scores'][index] > threshold])
         detect_coord = np.array([value for index, value in enumerate(output_dict['detection_boxes'])
                                  if output_dict['detection_scores'][index] > threshold])
+
         if len(detect_class) == 0:
-            return np.array([])
+            return np.array([0])
+        else:
+            if len(detect_class) == 1:
+                if detect_class[0] == 5:
+                    ldx = detect_coord[0, 1] * 1366 + detect_coord[0, 3] * 1366
+                    ldy = detect_coord[0, 0] * 768 + detect_coord[0, 2] * 768
+                    ldroc = list(map(lambda x: int(x / 2), [ldx, ldy]))
+                    return detect_class[0], ldroc
+                else:
+                    return np.array([0])
+            elif len(detect_class) == 2:
+                if detect_class[1] == 6:
+                    ldx = detect_coord[1, 1] * 1366 + detect_coord[1, 3] * 1366
+                    ldy = detect_coord[1, 0] * 768 + detect_coord[1, 2] * 768
+                    ldroc = list(map(lambda x: int(x / 2), [ldx, ldy]))
+                    return detect_class[1], ldroc
+                else:
+                    return np.array([0])
+            elif len(detect_class) == 4:
+                return detect_class
+            else:
+                return np.array([0])
     else:
         detect_class = output_dict['detection_classes'][:4]
         detect_coord = output_dict['detection_boxes'][:4]
-    return detect_class[np.argsort(detect_coord[:, 1])[::-1]]
-
+        return detect_class[np.argsort(detect_coord[:, 1])]
 
 # 메인 윈도우 클래스
 class MyWindow(QMainWindow, form_class):
@@ -688,6 +716,8 @@ class MyWindow(QMainWindow, form_class):
             self.checkBoxRune.toggle()
         if runedeep:
             self.checkBoxRunedeep.toggle()
+        if ldcheck:
+            self.checkBoxLd.toggle()
         if useardu:
             self.checkBoxArdu.toggle()
         if usedisbot:
@@ -704,7 +734,8 @@ class MyWindow(QMainWindow, form_class):
         self.testBtn3.clicked.connect(self.onTest3Clicked)  # test3
         self.checkBoxLoc.stateChanged.connect(self.chkFunction)  # 위치체크
         self.checkBoxRune.stateChanged.connect(self.chkFunction)  # 룬체크
-        self.checkBoxRunedeep.stateChanged.connect(self.chkFunction) #룬딥러닝
+        self.checkBoxRunedeep.stateChanged.connect(self.chkFunction) # 룬딥러닝
+        self.checkBoxLd.stateChanged.connect(self.chkFunction) # 거탐체크
         self.checkBoxArdu.stateChanged.connect(self.chkFunction) # 아두이노체크
         self.checkBoxBot.stateChanged.connect(self.chkFunction)  # 디코봇체크
         self.doubleSpinBoxLil.valueChanged.connect(self.lil_changed) # 캡쳐주기 변경
@@ -835,6 +866,7 @@ class MyWindow(QMainWindow, form_class):
         global loccheck
         global runecheck
         global runedeep
+        global ldcheck
         global useardu
         global usedisbot
         # 메이플체크
@@ -852,6 +884,9 @@ class MyWindow(QMainWindow, form_class):
         # 룬딥러닝체크
         if self.checkBoxRunedeep.isChecked(): runedeep = True
         if not self.checkBoxRunedeep.isChecked(): runedeep = False
+        # 거탐체크
+        if self.checkBoxRune.isChecked(): ldcheck = True
+        if not self.checkBoxRune.isChecked(): ldcheck = False
         # 아두이노 체크
         if self.checkBoxArdu.isChecked(): useardu = True
         if not self.checkBoxArdu.isChecked(): useardu = False
@@ -1011,6 +1046,7 @@ class CaptureWorker(QThread):
     def __init__(self):
         super().__init__()
         self.capturei = 0
+        self.captureldi = 0
         self.running = True
 
     def run(self):
@@ -1047,7 +1083,31 @@ class CaptureWorker(QThread):
                                     #     "color: #4D69E8; border-style: solid; border-width: 2px; border-color: #54A0FF; border-radius: 10px; ")
                                     self.textInputTB1.emit("룬출현")
                                     self.textInputLabel.emit("runeloc", str(rune))
+                        if ldcheck and runedeep:
+                            self.captureldi += 1
+                            if self.captureldi == 4:
+                                self.captureldi = 0
+                                print("거탐찾아용")
+                                image_array = np.array(screen)
+                                with tf.device('/gpu:0'):
+                                    results = inference_from_model(image_array)
+                                rune_screen = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+                                cv2.imwrite(f'./img/rune/{int(time.time())}.jpg', rune_screen)
+                                print(results)
+                                if results == 0:
+                                    print("아무일도 없었다")
+                                elif results == 5:
+                                    print("거탐출현 클릭을 하자")
+                                elif results == 6:
+                                    print("거탐 문자를 쓰자")
+                                else:
+                                    print("룬인가바")
+
                 self.capturei += 1
+
+
+
+
 
         # job1 내위치 0.1초마다
         job1 = schedule.every(caplil).seconds.do(myloce)

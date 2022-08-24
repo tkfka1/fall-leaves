@@ -49,6 +49,10 @@ https://docs.pycord.dev/en/master/#getting-started
  
 https://www.arduino.cc/reference/en/language/functions/usb/keyboard/keyboardmodifiers
 
+**keyboard test**
+
+https://funkeys.co.kr/bbs/page.php?hid=keytest
+
 # How to use
 
 that`s simple
@@ -66,6 +70,7 @@ that`s simple
 ## Basic
 
 Start with information
+
 
 ## Set
 
@@ -89,7 +94,7 @@ Start with information
 | **위치체크**  | location check , dependent on **미니맵체크** |
 | **룬체크** | rune check , dependent on **위치체크** |
 | **룬딥러닝** | rune answer with deep learning , dependent on **룬체크**  |
-
+| **거탐체크**  | lie detector check , dependent on **룬딥러닝** |
 
 ## Script set
 

@@ -262,16 +262,17 @@ async def bt():
             await bot.change_presence(status=discord.Status.online, activity=discord.Game("거탐"))
             if i4 == 5:
                 i4 = 0
-                await btuser.send('(＼(・ω ・＼)SAN치！(／・ω・)／FIN치！')
+                await btchannel.send(f'<@{user}>(＼(・ω ・＼)SAN치！(／・ω・)／FIN치！')
                 screen.save("./img/distemp.jpg")
                 file = discord.File("img/distemp.jpg")
                 embed = discord.Embed(title='알림', description='거탐', color=0xFF5733)
                 embed.set_image(url="attachment://distemp.jpg")
-                await btuser.send(embed=embed, file=file)
+                await btchannel.send(embed=embed, file=file)
             i4 += 1
             
         elif disstat == 5:
             await bot.change_presence(status=discord.Status.online, activity=discord.Game("비올레타"))
+            await btuser.send('(」・ω・)」우―！(／・ω・)／냐―！')
             await btuser.send('(」・ω・)」우―！(／・ω・)／냐―！')
 
         elif disstat == 6:

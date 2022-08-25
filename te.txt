@@ -24,6 +24,9 @@ https://cog-creators.github.io/discord-embed-sandbox/
 2
 중지 여러번 눌러야 됨
 
+pip freeze > requirements.txt
+pip install -r requirements.txt
+
 powershell (관리자)
 Set-ExecutionPolicy -ExecutionPolicy Unrestricted
 디스코드 토큰

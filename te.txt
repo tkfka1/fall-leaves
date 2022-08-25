@@ -21,7 +21,7 @@ https://docs.pycord.dev/en/master/#getting-started
 
 https://cog-creators.github.io/discord-embed-sandbox/
 
-
+2
 중지 여러번 눌러야 됨
 
 

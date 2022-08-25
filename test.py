@@ -14,6 +14,7 @@ MiniRD = cv2.imread('./img/minimapRD.png', cv2.IMREAD_COLOR)
 MiniLU_mask = cv2.imread('./img/minimapLU_mask.png', cv2.IMREAD_COLOR)
 MiniRD_mask = cv2.imread('./img/minimapRD_mask.png', cv2.IMREAD_COLOR)
 
+
 def runePosition(img):
     try:
         # res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)), Rune_templ,
@@ -29,16 +30,43 @@ def runePosition(img):
     except:
         return 0, 0
 
+def mapinfo(im1):
+    try:
+        infobox = 4, 15, 294, 65
+        crop_img = im1.crop(infobox)
+        mapinfoimg = cv2.imread('./img/mapinfo.png', cv2.IMREAD_COLOR)
+        res_map = cv2.matchTemplate((cv2.cvtColor(np.array(crop_img), cv2.COLOR_RGB2BGR)), mapinfoimg, cv2.TM_SQDIFF_NORMED)
+        con_map = res_map.min()
+        if con_map < 0.01:
+            return 0
+        else:
+            return 1
+    except:
+        return 2
+
+
+def mapinfo2(img):
+    try:
+        crop_img = img.crop(4, 15, 294, 65)
+        res_runepos = cv2.matchTemplate((cv2.cvtColor(np.array(crop_img), cv2.COLOR_RGB2BGR)), mapinfoimg, cv2.TM_SQDIFF)
+        minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(res_runepos)
+        con_map = minVal
+        print(con_map)
+        return 0,0
+    except:
+        return 0, 0
+
 
 a = time.time()
 bbox = 0,0,400,400
 bboxMini = 0,0,300,300
+infobox = 4, 15, 294, 65
 # screen = ImageGrab.grab(bbox)
 # # 내위치 찾기
 # crop_img = screen.crop(bboxMini)
-im = Image.open("./img/violeta.png")
-crop_img = im.crop(bboxMini)
-rune = runePosition(im)
+im = Image.open("./img/temp.png")
+rune = mapinfo(im)
+print(rune)
 print(time.time()-a)
 # TM_CCOEFF 163 206 0.829047
 # TM_CCORR_NORMED 201 101 0.8486633

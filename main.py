@@ -23,6 +23,8 @@ import tensorflow as tf
 import configparser
 
 form_class = uic.loadUiType("mainWindow.ui")[0]
+global mapinfopath
+mapinfopath = './img/mapinfo.jpg'
 global mytype
 global caplil
 global maplecheck
@@ -214,45 +216,78 @@ async def on_message(message):
 
 @bot.command()
 async def ping(ctx):
-    file = discord.File("temp.png")
+    file = discord.File("temp.jpg")
     embed = discord.Embed(title='알림', description='거탐', color=0xFF5733)
-    embed.set_image(url="attachment://temp.png")
+    embed.set_image(url="attachment://./temp.jpg")
     await ctx.send(embed=embed, file=file)
 
 
 # disstat = 0  중지 1 정상동작중 2 룬찾기 3 알람 4 거탐 5 비올레타
 # 디스코드 모니터
 async def bt():
-    global channel
-    global user
-    channel = bot.get_channel(channel)
-    user = await bot.fetch_user(user)
+    global screen
+    btchannel = bot.get_channel(channel)
+    btuser = await bot.fetch_user(user)
 
     await bot.wait_until_ready()
-    i = 0
+    t1 = time.time()
+    i1 = 600
+    i3 = 0
+    i4 = 5
+    i6 = 5
     while not bot.is_closed():
-        # await channel.send("읏우")
-        # await user.send('우누누우')
+        # await btchannel.send("읏우")
+        # await btuser.send('우누누우')
         # print("웃우")
         if disstat == 0:
             await bot.change_presence(status=discord.Status.online, activity=discord.Game("중지"))
         elif disstat == 1:
             await bot.change_presence(status=discord.Status.online, activity=discord.Game("정상동작"))
-            if i == 600:
-                i = 0
-                await channel.send("정상동작중입니다.")
-            i = i + 1
+            if i1 == 600:
+                i1 = 0
+                await btchannel.send(f"{int(time.time() - t1)/60} 분 동안정상동작중입니다.")
+            i1 += 1
+        
         elif disstat == 2:
             await bot.change_presence(status=discord.Status.online, activity=discord.Game("일시정지"))
+        
         elif disstat == 3:
             await bot.change_presence(status=discord.Status.online, activity=discord.Game("룬찾기"))
+            if i3 == 30:
+                i3 = 0
+                await btuser.send("룬을 30초동안 못찾고있습니다")
+            i3 += 1
+            
         elif disstat == 4:
             await bot.change_presence(status=discord.Status.online, activity=discord.Game("거탐"))
-            await user.send('(＼(・ω ・＼)SAN치！(／・ω・)／FIN치！')
+            if i4 == 5:
+                i4 = 0
+                await btuser.send('(＼(・ω ・＼)SAN치！(／・ω・)／FIN치！')
+                screen.save("./img/distemp.jpg")
+                file = discord.File("img/distemp.jpg")
+                embed = discord.Embed(title='알림', description='거탐', color=0xFF5733)
+                embed.set_image(url="attachment://distemp.jpg")
+                await btuser.send(embed=embed, file=file)
+            i4 += 1
+            
         elif disstat == 5:
             await bot.change_presence(status=discord.Status.online, activity=discord.Game("비올레타"))
-            await user.send('(」・ω・)」우―！(／・ω・)／냐―！')
+            await btuser.send('(」・ω・)」우―！(／・ω・)／냐―！')
 
+        elif disstat == 6:
+            await bot.change_presence(status=discord.Status.online, activity=discord.Game("맵오류"))
+            if i6 == 5:
+                i6 = 0
+                await btuser.send('위치가 이상해용')
+                screen.save("./img/distemp.jpg")
+                file = discord.File("img/distemp.jpg")
+                embed = discord.Embed(title='알림', description='거탐', color=0xFF5733)
+                embed.set_image(url="attachment://distemp.jpg")
+                await btuser.send(embed=embed, file=file)
+            i6 += 1
+            
+            
+            
         await asyncio.sleep(1)
 
 # 키마 세팅 클래스
@@ -610,7 +645,6 @@ class Capture:
                                      cv2.TM_CCORR_NORMED, mask=Capture.MiniRD_mask)
         con_pos2 = res_pos2.max()
         loc_pos2 = np.where(res_pos2 == con_pos2)
-        # img.save("./img/tempmini.png")
         if con_pos1 > 0.99 and con_pos2 > 0.99:
             return loc_pos1[1][0] + 1, loc_pos1[0][0] + 1, loc_pos2[1][0] + 12, loc_pos2[0][0] + 11, con_pos1, con_pos2
         else:
@@ -637,15 +671,27 @@ class Capture:
             minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(res_runepos)
             con_runepos = minVal
             loc_runepos = minLoc
-            # img.save("./img/tempmini.png")
-            # print(minVal, maxVal, minLoc, maxLoc)
             if con_runepos < 0.01:
                 return loc_runepos[0], loc_runepos[1]
             else:
                 return 0, 0
         except:
             return 0, 0
-
+        
+    def mapinfo(self, img):
+        global mapinfopath
+        try:
+            infobox = 4, 15, 294, 65
+            crop_img = img.crop(infobox)
+            mapinfoimg = cv2.imread(mapinfopath, cv2.IMREAD_COLOR)
+            res_map = cv2.matchTemplate((cv2.cvtColor(np.array(crop_img), cv2.COLOR_RGB2BGR)), mapinfoimg, cv2.TM_SQDIFF_NORMED)
+            con_map = res_map.min()
+            if con_map < 0.01:
+                return 0
+            else:
+                return 1
+        except:
+            return 2
 
 ## 룬딥쁘러닝
 def inference_from_model(image, threshold=None):
@@ -843,22 +889,16 @@ class MyWindow(QMainWindow, form_class):
             self.textInputTB1(str(results))
 
     def onTest1Clicked(self):
-        print("test1 시작")
-        self.time = time.time()
-        global ardu
-        ardu = Arduino()
-        time.sleep(1)
-        print(f"test1 종료 걸린시간 = {time.time() - self.time}")
+        global disstat
+        disstat = 3
 
     def onTest2Clicked(self):
-        global ardu
-        print("test2 시작")
-        self.time = time.time()
-        gotohunt(self.time)
-        print(f"test2 종료 걸린시간 = {time.time() - self.time}")
+        global disstat
+        disstat = 4
 
     def onTest3Clicked(self):
-        self.progressBar.setValue(100)
+        global disstat
+        disstat = 6
 
     def chkFunction(self):
         global maplecheck
@@ -988,7 +1028,7 @@ class MyWindow(QMainWindow, form_class):
                     self.textInputTB1("메이플 미니맵 확인")
                     screen = ImageGrab.grab(bbox)
                     # 시작 찰칵찰칵이
-                    screen.save("./img/temp.png")
+                    screen.save("./img/temp.jpg")
                     miniMap = Capture.miniMap(self, screen)
                     if miniMap[3] == 0:
                         self.textInputTB1("미니맵 인식안됨")
@@ -1001,8 +1041,8 @@ class MyWindow(QMainWindow, form_class):
                     self.label_minimapsize.setText(str(minisize))
                     infobox = 4, 15, 294, 65
                     infoimg = screen.crop(infobox)
-                    infoimg.save("./img/mapinfo.png")
-                    pixmap = QPixmap("./img/mapinfo.png")
+                    infoimg.save("./img/mapinfo.jpg")
+                    pixmap = QPixmap("./img/mapinfo.jpg")
                     self.label_imgmapinfo.setPixmap(pixmap)
 
             self.textInputTB1("캡쳐 쓰레드 시작")
@@ -1083,6 +1123,12 @@ class CaptureWorker(QThread):
                                     #     "color: #4D69E8; border-style: solid; border-width: 2px; border-color: #54A0FF; border-radius: 10px; ")
                                     self.textInputTB1.emit("룬출현")
                                     self.textInputLabel.emit("runeloc", str(rune))
+                            mapinfo = Capture.mapinfo(self, screen)
+                            if mapinfo == 1:
+                                disstat == 6
+                            elif mapinfo == 0:
+                                disstat = 1
+                                
                         if ldcheck and runedeep:
                             self.captureldi += 1
                             if self.captureldi == 4:
@@ -1097,6 +1143,7 @@ class CaptureWorker(QThread):
                                 if results == 0:
                                     print("아무일도 없었다")
                                 elif results == 5:
+                                    disstat = 4
                                     print("거탐출현 클릭을 하자")
                                 elif results == 6:
                                     print("거탐 문자를 쓰자")
@@ -1147,23 +1194,24 @@ class ScriptWorker(QThread):
         global model
         if not mytype == "스크립트제작":
             if runedeep:
-                self.textInputTB1.emit("딥러닝 체크")
-                self.deepprogress.emit(10)
-                model = tf.saved_model.load(PATH_TO_MODELS)
-                self.deepprogress.emit(30)
-                screen = Image.open("./img/rune_ready.jpg")
-                self.deepprogress.emit(40)
-                image_array = np.array(screen)
-                self.deepprogress.emit(50)
-                try:
-                    with tf.device('/gpu:0'):
-                        results = inference_from_model(image_array)
-                    self.deepprogress.emit(100)
-                    print(results)
-                    self.textInputTB1.emit("딥러닝 준비 완료")
-                except:
-                    self.textInputTB1.emit("딥러닝 고장")
-                    self.deepprogress.emit(0)
+                if model == None:
+                    self.textInputTB1.emit("딥러닝 체크")
+                    self.deepprogress.emit(10)
+                    model = tf.saved_model.load(PATH_TO_MODELS)
+                    self.deepprogress.emit(30)
+                    screen = Image.open("./img/rune_ready.jpg")
+                    self.deepprogress.emit(40)
+                    image_array = np.array(screen)
+                    self.deepprogress.emit(50)
+                    try:
+                        with tf.device('/gpu:0'):
+                            results = inference_from_model(image_array)
+                        self.deepprogress.emit(100)
+                        print(results)
+                        self.textInputTB1.emit("딥러닝 준비 완료")
+                    except:
+                        self.textInputTB1.emit("딥러닝 고장")
+                        self.deepprogress.emit(0)
         self.hunttime = time.time()
         self.runeloce = 0, 0
         self.scripti = 0
@@ -1215,7 +1263,6 @@ class ScriptWorker(QThread):
                     else:
                         gotohunt(self.hunttime)
             else:
-                print("스크립트가 없습니다.")
                 time.sleep(1)
 
     def resume(self):

@@ -21,10 +21,14 @@ https://docs.pycord.dev/en/master/#getting-started
 
 https://cog-creators.github.io/discord-embed-sandbox/
 
-
+2
 중지 여러번 눌러야 됨
 
+pip freeze > requirements.txt
+pip install -r requirements.txt
 
+powershell (관리자)
+Set-ExecutionPolicy -ExecutionPolicy Unrestricted
 디스코드 토큰
 miari-1 
 'MTAwNjQ5NzUwNjk3ODQ0NzM5MA.GJBqsv.Ix6l_zGHOYhPGl6GsREEQOPiyD8aG3NO30lXP0'
